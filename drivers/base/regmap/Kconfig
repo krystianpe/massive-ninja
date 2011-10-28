@@ -11,3 +11,6 @@ config REGMAP_I2C
 
 config REGMAP_SPI
 	tristate
+
+config REGMAP_IRQ
+	bool
