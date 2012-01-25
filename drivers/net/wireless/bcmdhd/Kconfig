@@ -68,23 +68,3 @@ config BCMDHD_CSCAN_ENABLE
 	---help---
 	Enable Combo Scan
 
-config BCMDHD_INSMOD_NO_FW_LOAD
-	bool "Enable delayed firmware load"
-	depends on BCMDHD
-	default n
-	---help---
-	Enable delayes firmware
-
-config BCMDHD_CUSTOM_REGULATORY_DOMAIN
-	bool "Enable Custom Regulatory Domain"
-	depends on BCMDHD
-	default y
-	---help---
-	Use Custom Regulatory Domain set by driver.
-
-config BCMDHD_GET_CUSTOM_MAC_ENABLE
-	bool "Use custom mac address"
-	depends on BCMDHD
-	default n
-	---help---
-	   Use mac address provided by bcm4329_wlan platform device.
