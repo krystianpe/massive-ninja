@@ -12,29 +12,15 @@ config BCMDHD
 
 config BCMDHD_FW_DIR
 	depends on BCMDHD
-	string "Firmware directory"
+	string "Firmware path"
 	default "/system/vendor/firmware"
 	---help---
 	  Path to the firmware file.
 
 config BCMDHD_NVRAM_DIR
 	depends on BCMDHD
-	string "NVRAM directory"
-	default "/system/etc"
-	---help---
-	  Path to the calibration file.
-
-config BCMDHD_FW_PATH
-	depends on BCMDHD
-	string "Firmware path"
-	default "/system/vendor/firmware/bcm4329/fw_bcmdhd.bin"
-	---help---
-	  Path to the firmware file.
-
-config BCMDHD_NVRAM_PATH
-	depends on BCMDHD
 	string "NVRAM path"
-	default "/system/etc/nvram_4329.txt"
+	default "/system/etc"
 	---help---
 	  Path to the calibration file.
 
@@ -68,3 +54,9 @@ config BCMDHD_CSCAN_ENABLE
 	---help---
 	Enable Combo Scan
 
+config BCMDHD_INSMOD_NO_FW_LOAD
+	bool "Enable delayed firmware load"
+	depends on BCMDHD
+	default n
+	---help---
+	Enable delayes firmware
