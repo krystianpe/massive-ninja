@@ -1393,6 +1393,14 @@ static int fsl_set_selfpowered(struct usb_gadget * gadget, int is_on)
 	return 0;
 }
 
+static int fsl_set_selfpowered(struct usb_gadget * gadget, int is_on)
+{
+	struct fsl_udc *udc;
+	udc = container_of(gadget, struct fsl_udc, gadget);
+	udc->selfpowered = (is_on != 0);
+	return 0;
+}
+
 /* Notify controller that VBUS is powered, Called by whatever
    detects VBUS sessions */
 static int fsl_vbus_session(struct usb_gadget *gadget, int is_active)
