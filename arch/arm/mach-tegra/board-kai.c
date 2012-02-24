@@ -642,27 +642,18 @@ static int __init kai_touch_init(void)
 	return 0;
 }
 
-static struct tegra_usb_platform_data tegra_udc_pdata = {
-	.port_otg = true,
-	.has_hostpc = true,
-	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
-	.op_mode = TEGRA_USB_OPMODE_DEVICE,
-	.u_data.dev = {
-		.vbus_pmu_irq = 0,
-		.vbus_gpio = -1,
-		.charging_supported = false,
-		.remote_wakeup_supported = false,
+static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
+	[0] = {
+			.phy_config = &utmi_phy_config[0],
+			.operating_mode = TEGRA_USB_HOST,
+			.power_down_on_bus_suspend = 1,
+			.default_enable = false,
 	},
-	.u_cfg.utmi = {
-		.hssync_start_delay = 0,
-		.elastic_limit = 16,
-		.idle_wait_delay = 17,
-		.term_range_adj = 6,
-		.xcvr_setup = 8,
-		.xcvr_lsfslew = 2,
-		.xcvr_lsrslew = 2,
-		.xcvr_setup_offset = 0,
-		.xcvr_use_fuses = 1,
+	[1] = {
+			.phy_config = &utmi_phy_config[1],
+			.operating_mode = TEGRA_USB_HOST,
+			.power_down_on_bus_suspend = 1,
+			.default_enable = false,
 	},
 };
 
