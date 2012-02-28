@@ -64,6 +64,7 @@ struct tegra_suspend_platform_data {
 	void (*board_suspend)(int lp_state, enum suspend_stage stg);
 	/* lp_state = 0 for LP0 state, 1 for LP1 state, 2 for LP2 state */
 	void (*board_resume)(int lp_state, enum resume_stage stg);
+	unsigned int cpu_resume_boost;	/* CPU frequency resume boost in kHz */
 };
 
 unsigned long tegra_cpu_power_good_time(void);
