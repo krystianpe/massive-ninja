@@ -1284,6 +1284,11 @@ static void stop_data_traffic(struct acm *acm)
 {
 	int i;
 
+	if (!acm) {
+		pr_err("%s: !acm\n", __func__);
+		return;
+	}
+
 	dev_dbg(&acm->control->dev, "%s\n", __func__);
 
 	usb_kill_urb(acm->ctrlurb);
@@ -1349,6 +1354,11 @@ static int acm_suspend(struct usb_interface *intf, pm_message_t message)
 	struct acm *acm = usb_get_intfdata(intf);
 	int cnt;
 
+	if (!acm) {
+		pr_err("%s: !acm\n", __func__);
+		return -ENODEV;
+	}
+
 	if (message.event & PM_EVENT_AUTO) {
 		int b;
 
@@ -1390,6 +1400,11 @@ static int acm_resume(struct usb_interface *intf)
 #else
 	struct acm_wb *wb;
 #endif
+
+	if (!acm) {
+		pr_err("%s: !acm\n", __func__);
+		return -ENODEV;
+	}
 
 	spin_lock_irq(&acm->read_lock);
 	acm->susp_count -= 1;
@@ -1446,6 +1461,11 @@ static int acm_reset_resume(struct usb_interface *intf)
 {
 	struct acm *acm = usb_get_intfdata(intf);
 	struct tty_struct *tty;
+
+	if (!acm) {
+		pr_err("%s: !acm\n", __func__);
+		return -ENODEV;
+	}
 
 	mutex_lock(&acm->mutex);
 	if (acm->port.count) {
