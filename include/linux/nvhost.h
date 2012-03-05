@@ -132,6 +132,7 @@ extern int nvhost_add_devices(struct nvhost_device **, int num);
 
 /* Register device to nvhost bus */
 extern int nvhost_device_register(struct nvhost_device *);
+
 /* Deregister device from nvhost bus */
 extern void nvhost_device_unregister(struct nvhost_device *);
 
