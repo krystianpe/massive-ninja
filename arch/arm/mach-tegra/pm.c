@@ -4,8 +4,6 @@
  * CPU complex suspend & resume functions for Tegra SoCs
  *
  * Copyright (c) 2009-2012, NVIDIA Corporation.
- * Copyright 2013: Olympus Kernel Project
- * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,7 +43,6 @@
 #include <linux/memblock.h>
 #include <linux/console.h>
 #include <linux/pm_qos_params.h>
-#include <linux/tegra_audio.h>
 
 #include <asm/cacheflush.h>
 #include <asm/cpu_pm.h>
@@ -375,9 +372,9 @@ static void restore_cpu_complex(u32 mode)
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	writel(tegra_sctx.pllp_misc, clk_rst + CLK_RESET_PLLP_MISC);
 	writel(tegra_sctx.pllp_base, clk_rst + CLK_RESET_PLLP_BASE);
-#endif
 	writel(tegra_sctx.pllp_outa, clk_rst + CLK_RESET_PLLP_OUTA);
 	writel(tegra_sctx.pllp_outb, clk_rst + CLK_RESET_PLLP_OUTB);
+#endif
 
 	/* Is CPU complex already running on PLLX? */
 	reg = readl(clk_rst + CLK_RESET_CCLK_BURST);
@@ -848,7 +845,6 @@ static void tegra_suspend_check_pwr_stats(void)
 int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 {
 	int err = 0;
-	u32 scratch37 = 0xDEADBEEF;
 
 	if (WARN_ON(mode <= TEGRA_SUSPEND_NONE ||
 		mode >= TEGRA_MAX_SUSPEND_MODE)) {
@@ -869,7 +865,6 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 		mode = TEGRA_SUSPEND_LP1;
 #endif
 	}
-
 
 	if ((mode == TEGRA_SUSPEND_LP0) && !tegra_pm_irq_lp0_allowed()) {
 		pr_info("LP0 not used due to unsupported wakeup events\n");
@@ -925,10 +920,6 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 		tegra_lp0_resume_mc();
 	} else if (mode == TEGRA_SUSPEND_LP1)
 		*iram_cpu_lp1_mask = 0;
-
-	/* if scratch37 was clobbered during LP1, restore it */
-	if (scratch37 != 0xDEADBEEF)
-		pmc_32kwritel(scratch37, PMC_SCRATCH37);
 
 	restore_cpu_complex(flags);
 
@@ -1324,19 +1315,13 @@ static int tegra_debug_uart_syscore_init(void)
 arch_initcall(tegra_debug_uart_syscore_init);
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
-static struct clk *clk_wake;
-
 static void pm_early_suspend(struct early_suspend *h)
 {
-	if (clk_wake)
-		clk_disable(clk_wake);
 	pm_qos_update_request(&awake_cpu_freq_req, PM_QOS_DEFAULT_VALUE);
 }
 
 static void pm_late_resume(struct early_suspend *h)
 {
-	if (clk_wake)
-		clk_enable(clk_wake);
 	pm_qos_update_request(&awake_cpu_freq_req, (s32)AWAKE_CPU_FREQ_MIN);
 }
 
@@ -1347,7 +1332,6 @@ static struct early_suspend pm_early_suspender = {
 
 static int pm_init_wake_behavior(void)
 {
-	clk_wake = tegra_get_clock_by_name("wake.sclk");
 	register_early_suspend(&pm_early_suspender);
 	return 0;
 }
