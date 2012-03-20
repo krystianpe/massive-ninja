@@ -304,6 +304,7 @@ static struct platform_device *p1852_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
+	&tegra_wdt_device
 };
 
 static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
