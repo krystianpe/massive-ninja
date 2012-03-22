@@ -1074,9 +1074,9 @@ static struct tegra_dc_out cardhu_disp1_out = {
 	.align		= TEGRA_DC_ALIGN_MSB,
 	.order		= TEGRA_DC_ORDER_RED_BLUE,
 	.sd_settings	= &cardhu_sd_settings,
+	.parent_clk	= "pll_d_out0",
 
 #ifndef CONFIG_TEGRA_CARDHU_DSI
-	.parent_clk	= "pll_p",
 	.parent_clk_backup = "pll_d2_out0",
 
 	.type		= TEGRA_DC_OUT_RGB,
@@ -1277,10 +1277,11 @@ int __init cardhu_panel_init(void)
 #endif
 
 #if defined(CONFIG_TEGRA_DC) && !defined(CONFIG_TEGRA_CARDHU_DSI)
-	if (board_info.board_id == BOARD_E1291 &&
-		((board_info.sku & SKU_TOUCHSCREEN_MECH_FIX) == 0)) {
+	if (WARN_ON(board_info.board_id == BOARD_E1291 &&
+		((board_info.sku & SKU_TOUCHSCREEN_MECH_FIX) == 0))) {
 		/* use 55Hz panel timings to reduce noise on sensitive touch */
 		printk("Using cardhu_panel_modes_55hz\n");
+		cardhu_disp1_out.parent_clk = "pll_p";
 		cardhu_disp1_out.modes = cardhu_panel_modes_55hz;
 		cardhu_disp1_out.n_modes = ARRAY_SIZE(cardhu_panel_modes_55hz);
 	}
