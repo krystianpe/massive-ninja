@@ -111,8 +111,6 @@ struct tegra_dc {
 	struct resource			*fb_mem;
 	struct tegra_fb_info		*fb;
 
-	struct tegra_overlay_info	*overlay;
-
 	struct {
 		u32			id;
 		u32			min;
@@ -216,10 +214,6 @@ void tegra_dc_stats_enable(struct tegra_dc *dc, bool enable);
 bool tegra_dc_stats_get(struct tegra_dc *dc);
 
 void tegra_edid_get_raw_data(u8 *buf);
-
-/* defined in dc.c, used by overlay.c */
-unsigned int tegra_dc_has_multiple_dc(void);
-unsigned long tegra_dc_get_bandwidth(struct tegra_dc_win *wins[], int n);
 
 /* defined in dc.c, used by dc_sysfs.c */
 u32 tegra_dc_read_checksum_latched(struct tegra_dc *dc);
