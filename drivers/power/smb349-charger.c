@@ -388,7 +388,6 @@ static int smb349_enable_charging(struct regulator_dev *rdev,
 				"charger..\n", __func__);
 			return ret;
 		}
-		charger->chrg_type = NONE;
 	} else {
 		ret =  smb349_read(client, SMB349_STS_REG_D);
 		if (ret < 0) {
@@ -426,7 +425,7 @@ static int __devinit smb349_probe(struct i2c_client *client,
 {
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
 	struct smb349_charger_platform_data *pdata;
-	int ret;
+	int ret, irq_num;
 
 	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE))
 		return -EIO;
@@ -438,6 +437,12 @@ static int __devinit smb349_probe(struct i2c_client *client,
 	charger->client = client;
 	charger->dev = &client->dev;
 	pdata = client->dev.platform_data;
+
+	if(!pdata) {
+		ret = -ENXIO;
+		goto error;
+	}
+
 	i2c_set_clientdata(client, charger);
 
 	/* Check battery presence */
@@ -452,7 +457,6 @@ static int __devinit smb349_probe(struct i2c_client *client,
 	charger->reg_desc.ops   = &smb349_tegra_regulator_ops;
 	charger->reg_desc.type  = REGULATOR_CURRENT;
 	charger->reg_desc.id    = pdata->regulator_id;
-	charger->reg_desc.type  = REGULATOR_CURRENT;
 	charger->reg_desc.owner = THIS_MODULE;
 
 	charger->reg_init_data.supply_regulator         = NULL;
@@ -482,7 +486,8 @@ static int __devinit smb349_probe(struct i2c_client *client,
 		dev_err(&client->dev, "failed to register %s\n",
 				charger->reg_desc.name);
 		ret = PTR_ERR(charger->rdev);
-		goto regulator_error;
+
+		goto error;
 	}
 
 	/* disable OTG */
