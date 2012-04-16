@@ -135,11 +135,8 @@ struct nvavp_info {
 	u32				syncpt_value;
 
 	struct nvhost_device		*nvhost_dev;
-	struct miscdevice		video_misc_dev;
-#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
-	struct miscdevice		audio_misc_dev;
-#endif
-	atomic_t			clock_stay_on_refcount;
+	struct miscdevice		misc_dev;
+	atomic_t				clock_stay_on_refcount;
 };
 
 struct nvavp_clientctx {
@@ -150,7 +147,6 @@ struct nvavp_clientctx {
 	int num_relocs;
 	struct nvavp_info *nvavp;
 	int clock_stay_on;
-	int channel_id;
 };
 
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
@@ -266,8 +262,7 @@ static void nvavp_clks_disable(struct nvavp_info *nvavp)
 
 static u32 nvavp_check_idle(struct nvavp_info *nvavp)
 {
-	struct nvavp_channel *channel_info = nvavp_get_channel_info(nvavp, NVAVP_VIDEO_CHANNEL);
-	struct nv_e276_control *control = channel_info->os_control;
+	struct nv_e276_control *control = nvavp->os_control;
 	return ((control->put == control->get)
 		&& (!atomic_read(&nvavp->clock_stay_on_refcount))) ? 1 : 0;
 }
@@ -1219,6 +1214,40 @@ static int nvavp_wake_avp_ioctl(struct file *filp, unsigned int cmd,
 	return 0;
 }
 
+static int nvavp_force_clock_stay_on_ioctl(struct file *filp, unsigned int cmd,
+							unsigned long arg)
+{
+	struct nvavp_clientctx *clientctx = filp->private_data;
+	struct nvavp_info *nvavp = clientctx->nvavp;
+	struct nvavp_clock_stay_on_state_args clock;
+
+	if (copy_from_user(&clock, (void __user *)arg,
+			sizeof(struct nvavp_clock_stay_on_state_args)))
+		return -EFAULT;
+
+	dev_dbg(&nvavp->nvhost_dev->dev, "%s: state=%d\n",
+		__func__, clock.state);
+
+	if (clock.state != NVAVP_CLOCK_STAY_ON_DISABLED &&
+		clock.state !=  NVAVP_CLOCK_STAY_ON_ENABLED) {
+		dev_err(&nvavp->nvhost_dev->dev, "%s: invalid argument=%d\n",
+			__func__, clock.state);
+		return -EINVAL;
+	}
+
+	if (clientctx->clock_stay_on == clock.state)
+		return 0;
+
+	clientctx->clock_stay_on = clock.state;
+
+	if (clientctx->clock_stay_on == NVAVP_CLOCK_STAY_ON_ENABLED)
+		atomic_inc(&nvavp->clock_stay_on_refcount);
+	else if (clientctx->clock_stay_on == NVAVP_CLOCK_STAY_ON_DISABLED)
+		atomic_dec(&nvavp->clock_stay_on_refcount);
+
+	return 0;
+}
+
 static int tegra_nvavp_open(struct inode *inode, struct file *filp)
 {
 	struct miscdevice *miscdev = filp->private_data;
@@ -1331,6 +1360,9 @@ static long tegra_nvavp_ioctl(struct file *filp, unsigned int cmd,
 		break;
 	case NVAVP_IOCTL_WAKE_AVP:
 		ret = nvavp_wake_avp_ioctl(filp, cmd, arg);
+		break;
+	case NVAVP_IOCTL_FORCE_CLOCK_STAY_ON:
+		ret = nvavp_force_clock_stay_on_ioctl(filp, cmd, arg);
 		break;
 	default:
 		ret = -EINVAL;
