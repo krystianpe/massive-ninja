@@ -24,6 +24,7 @@
 
 #include <linux/types.h>
 #include <linux/power_supply.h>
+#include <linux/memory.h>
 
 #if defined(CONFIG_TEGRA_NVMAP)
 #define NVMAP_HEAP_CARVEOUT_IRAM_INIT	\
