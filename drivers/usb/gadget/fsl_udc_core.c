@@ -1384,15 +1384,6 @@ static int fsl_wakeup(struct usb_gadget *gadget)
 }
 #endif
 
-
-static int fsl_set_selfpowered(struct usb_gadget * gadget, int is_on)
-{
-	struct fsl_udc *udc;
-	udc = container_of(gadget, struct fsl_udc, gadget);
-	udc->selfpowered = (is_on != 0);
-	return 0;
-}
-
 static int fsl_set_selfpowered(struct usb_gadget * gadget, int is_on)
 {
 	struct fsl_udc *udc;
