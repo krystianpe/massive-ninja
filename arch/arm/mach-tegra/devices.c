@@ -1213,8 +1213,8 @@ static struct resource tegra_udc_resources[] = {
 static u64 tegra_udc_dmamask = DMA_BIT_MASK(32);
 
 struct platform_device tegra_udc_device = {
-	.name	= "fsl-tegra-udc",
-	.id	= -1,
+	.name	= "tegra-udc",
+	.id	= 0,
 	.dev	= {
 		.dma_mask	= &tegra_udc_dmamask,
 		.coherent_dma_mask = DMA_BIT_MASK(32),
