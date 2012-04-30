@@ -27,6 +27,8 @@ obj-y                                   += pm.o
 obj-$(CONFIG_TEGRA_WDT_RECOVERY)        += wdt-recovery.o
 obj-$(CONFIG_PM_SLEEP)                  += pm-irq.o
 obj-y                                   += gic.o
+
+
 obj-y                                   += sleep.o
 
 plus_sec := $(call as-instr,.arch_extension sec,+sec)
