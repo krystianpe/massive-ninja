@@ -127,6 +127,13 @@ struct nvavp_info {
 	/* client for driver allocations, persistent */
 	struct nvmap_client		*nvmap;
 
+	struct mutex			pushbuffer_lock;
+	struct nvmap_handle_ref		*pushbuf_handle;
+	unsigned long			pushbuf_phys;
+	u8				*pushbuf_data;
+	u32				pushbuf_index;
+	u32				pushbuf_fence;
+
 	bool				pending;
 
 	struct nvavp_channel		channel_info[NVAVP_NUM_CHANNELS];
@@ -235,7 +242,7 @@ static struct clk *nvavp_clk_get(struct nvavp_info *nvavp, int id)
 static void nvavp_clks_enable(struct nvavp_info *nvavp)
 {
 	if (nvavp->clk_enabled++ == 0) {
-		nvhost_module_busy_ext(nvhost_get_parent(nvavp->nvhost_dev));
+		nvhost_module_busy(nvhost_get_host(nvavp->nvhost_dev)->dev);
 		clk_enable(nvavp->bsev_clk);
 		clk_enable(nvavp->vde_clk);
 		clk_set_rate(nvavp->emc_clk, nvavp->emc_clk_rate);
@@ -254,7 +261,7 @@ static void nvavp_clks_disable(struct nvavp_info *nvavp)
 		clk_disable(nvavp->vde_clk);
 		clk_set_rate(nvavp->emc_clk, 0);
 		clk_set_rate(nvavp->sclk, 0);
-		nvhost_module_idle_ext(nvhost_get_parent(nvavp->nvhost_dev));
+		nvhost_module_idle(nvhost_get_host(nvavp->nvhost_dev)->dev);
 		dev_dbg(&nvavp->nvhost_dev->dev, "%s: resetting emc_clk "
 				"and sclk\n", __func__);
 	}
@@ -276,14 +283,16 @@ static void clock_disable_handler(struct work_struct *work)
 			    clock_disable_work);
 	channel_info = nvavp_get_channel_info(nvavp, NVAVP_VIDEO_CHANNEL);
 
-	mutex_lock(&channel_info->pushbuffer_lock);
+	mutex_lock(&nvavp->pushbuffer_lock);
+
 	mutex_lock(&nvavp->open_lock);
 	if (nvavp_check_idle(nvavp) && nvavp->pending) {
 		nvavp->pending = false;
 		nvavp_clks_disable(nvavp);
 	}
 	mutex_unlock(&nvavp->open_lock);
-	mutex_unlock(&channel_info->pushbuffer_lock);
+
+	mutex_unlock(&nvavp->pushbuffer_lock);
 }
 
 static int nvavp_service(struct nvavp_info *nvavp)
@@ -594,14 +603,12 @@ static int nvavp_pushbuffer_update(struct nvavp_info *nvavp, u32 phys_addr,
 	}
 
 	/* enable clocks to VDE/BSEV */
-	if (IS_VIDEO_CHANNEL_ID(channel_id)) {
-		mutex_lock(&nvavp->open_lock);
-		if (!nvavp->pending) {
-			nvavp_clks_enable(nvavp);
-			nvavp->pending = true;
-		}
-		mutex_unlock(&nvavp->open_lock);
+	mutex_lock(&nvavp->open_lock);
+	if (!nvavp->pending) {
+		nvavp_clks_enable(nvavp);
+		nvavp->pending = true;
 	}
+	mutex_unlock(&nvavp->open_lock);
 
 	/* update put pointer */
 	channel_info->pushbuf_index = (channel_info->pushbuf_index + wordcount)&
