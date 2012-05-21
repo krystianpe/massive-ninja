@@ -114,7 +114,7 @@ static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.u_data.dev = {
 		//.vbus_pmu_irq = -1,
 		//.vbus_gpio = TEGRA_GPIO_PV6,
-		.charging_supported = true,
+		.charging_supported = false,
 		.remote_wakeup_supported = false,
 	},
 	.u_cfg.utmi = {
@@ -153,7 +153,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 };
 
 static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
-	.port_otg = false,
+	.port_otg = true,
 	.has_hostpc = false,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode	= TEGRA_USB_OPMODE_HOST,

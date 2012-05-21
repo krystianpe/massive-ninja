@@ -1031,6 +1031,7 @@ static int ehci_urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
 	int			rc;
 
 	spin_lock_irqsave (&ehci->lock, flags);
+	printk(KERN_INFO "%s", __func__);
 	rc = usb_hcd_check_unlink_urb(hcd, urb, status);
 	if (rc)
 		goto done;

@@ -2769,16 +2769,25 @@ static int hub_set_address(struct usb_device *udev, int devnum)
 		return 0;
 	if (udev->state != USB_STATE_DEFAULT)
 		return -EINVAL;
-	if (hcd->driver->address_device)
+	if (hcd->driver->address_device) {
+		printk(KERN_INFO "%s: retval = hcd->driver->address_device(hcd, udev);", __func__);
 		retval = hcd->driver->address_device(hcd, udev);
-	else
+		printk(KERN_INFO "%s: retval = %d", __func__, retval);
+	}
+	else {
+		printk(KERN_INFO "%s: retval = usb_control_msg(udev, usb_sndaddr0pipe()...", __func__);
 		retval = usb_control_msg(udev, usb_sndaddr0pipe(),
 				USB_REQ_SET_ADDRESS, 0, devnum, 0,
 				NULL, 0, USB_CTRL_SET_TIMEOUT);
+		printk(KERN_INFO "%s: retval = %d", __func__, retval);
+	}
 	if (retval == 0) {
+		printk(KERN_INFO "%s: update_devnum(udev, devnum);", __func__);
 		update_devnum(udev, devnum);
 		/* Device now using proper address. */
+		printk(KERN_INFO "%s: usb_set_device_state(udev, USB_STATE_ADDRESS);", __func__);
 		usb_set_device_state(udev, USB_STATE_ADDRESS);
+		printk(KERN_INFO "%s: usb_ep0_reinit(udev);", __func__);
 		usb_ep0_reinit(udev);
 	}
 	return retval;
@@ -2979,11 +2988,15 @@ hub_port_init (struct usb_hub *hub, struct usb_device *udev, int port1,
  		 * unauthorized address in the Connect Ack sequence;
  		 * authorization will assign the final address.
  		 */
+		printk(KERN_INFO "%s: if (udev->wusb == 0) {", __func__);
 		if (udev->wusb == 0) {
+			printk(KERN_INFO "%s: for (j = 0; j < SET_ADDRESS_TRIES; ++j) {", __func__);
 			for (j = 0; j < SET_ADDRESS_TRIES; ++j) {
 				retval = hub_set_address(udev, devnum);
-				if (retval >= 0)
+				if (retval >= 0) {
+					printk(KERN_INFO "%s: retval >= 0", __func__);
 					break;
+				}
 				msleep(200);
 			}
 			if (retval < 0) {

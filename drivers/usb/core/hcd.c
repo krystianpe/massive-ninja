@@ -777,6 +777,7 @@ static int usb_rh_urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
 	int		rc;
 
 	spin_lock_irqsave(&hcd_root_hub_lock, flags);
+	printk(KERN_INFO "%s", __func__);
 	rc = usb_hcd_check_unlink_urb(hcd, urb, status);
 	if (rc)
 		goto done;
@@ -1160,6 +1161,7 @@ int usb_hcd_check_unlink_urb(struct usb_hcd *hcd, struct urb *urb,
 	 * finish unlinking the initial failed usb_set_address()
 	 * or device descriptor fetch.
 	 */
+	printk(KERN_INFO "%s: before the: Unlink after no-IRQ?", __func__);
 	if (!HCD_SAW_IRQ(hcd) && !is_root_hub(urb->dev)) {
 		dev_warn(hcd->self.controller, "Unlink after no-IRQ?  "
 			"Controller is probably using the wrong IRQ.\n");
@@ -1516,6 +1518,7 @@ static int unlink1(struct usb_hcd *hcd, struct urb *urb, int status)
 		/* The only reason an HCD might fail this call is if
 		 * it has not yet fully queued the urb to begin with.
 		 * Such failures should be harmless. */
+		printk(KERN_INFO "%s", __func__);
 		value = hcd->driver->urb_dequeue(hcd, urb, status);
 	}
 	return value;

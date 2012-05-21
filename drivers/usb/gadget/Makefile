@@ -1,6 +1,7 @@
 #
 # USB peripheral controller drivers
 #
+GCOV_PROFILE_fsl_tegra_udc.o := y
 GCOV_PROFILE_tegra_udc.o := y
 
 ccflags-$(CONFIG_USB_GADGET_DEBUG) := -DDEBUG
