@@ -1410,29 +1410,6 @@ static bool tegra_dc_hdmi_mode_filter(const struct tegra_dc *dc,
 			return false;
 #endif
 
-#if 0
-	for (i = 0; i < ARRAY_SIZE(tegra_dc_hdmi_supported_modes); i++) {
-		const struct fb_videomode *supported_mode
-				= &tegra_dc_hdmi_supported_modes[i];
-		if (tegra_dc_hdmi_mode_equal(supported_mode, mode) &&
-		    tegra_dc_hdmi_valid_pixclock(dc, supported_mode)) {
-#ifdef CONFIG_MACH_OLYMPUS
-			if ((mode->lower_margin == 1) && !tegra_edid_lapdock_attached(hdmi->edid)) {
-#else
-			if (mode->lower_margin == 1) {
-#endif
-				/* This might be the case for HDMI<->DVI
-				 * where std VESA representation will not
-				 * pass constraint V_FRONT_PORCH >=
-				 * V_REF_TO_SYNC + 1.So reload mode in
-				 * CVT timing standards.
-				 */
-				if (!tegra_dc_reload_mode(mode))
-					return false;
-			}
-			else
-				memcpy(mode, supported_mode, sizeof(*mode));
-#endif
 	/* Check if the mode's pixel clock is more than the max rate*/
 	if (!tegra_dc_hdmi_valid_pixclock(dc, mode))
 		return false;
@@ -1446,7 +1423,11 @@ static bool tegra_dc_hdmi_mode_filter(const struct tegra_dc *dc,
 		mode->lower_margin + mode->vsync_len + mode->upper_margin > 1 &&
 		mode->xres >= 16 && mode->yres >= 16) {
 
-		if (mode->lower_margin == 1) {
+#ifdef CONFIG_MACH_OLYMPUS
+			if ((mode->lower_margin == 1) && !tegra_edid_lapdock_attached(hdmi->edid)) {
+#else
+			if (mode->lower_margin == 1) {
+#endif
 			/* This might be the case for HDMI<->DVI
 			 * where std VESA representation will not
 			 * pass constraint V_FRONT_PORCH >=
