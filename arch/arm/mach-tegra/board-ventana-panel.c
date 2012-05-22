@@ -36,6 +36,7 @@
 #include "devices.h"
 #include "gpio-names.h"
 #include "board.h"
+#include "tegra2_host1x_devices.h"
 
 #define ventana_pnl_pwr_enb	TEGRA_GPIO_PC6
 #define ventana_bl_enb		TEGRA_GPIO_PD4
@@ -413,7 +414,7 @@ int __init ventana_panel_init(void)
 #endif
 
 #ifdef CONFIG_TEGRA_GRHOST
-	err = nvhost_device_register(&tegra_grhost_device);
+	err = tegra2_register_host1x_devices();
 	if (err)
 		return err;
 #endif
