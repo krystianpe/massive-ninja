@@ -31,6 +31,7 @@
 #include <linux/usb.h>
 #include <linux/pm_runtime.h>
 #include <mach/usb_phy.h>
+#include <linux/regulator/consumer.h>
 #include "board.h"
 #include "devices.h"
 #include "gpio-names.h"
