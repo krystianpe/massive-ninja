@@ -68,20 +68,6 @@
 #define e1506_panel_enb		TEGRA_GPIO_PW1
 #define e1506_bl_enb		TEGRA_GPIO_PH2
 
-/* E1506 display board pins */
-#define e1506_lcd_te		TEGRA_GPIO_PJ1
-#define e1506_dsi_vddio		TEGRA_GPIO_PH1
-#define e1506_dsia_bl_pwm	TEGRA_GPIO_PH0
-#define e1506_panel_enb		TEGRA_GPIO_PW1
-#define e1506_bl_enb		TEGRA_GPIO_PH2
-
-/* E1506 display board pins */
-#define e1506_lcd_te		TEGRA_GPIO_PJ1
-#define e1506_dsi_vddio		TEGRA_GPIO_PH1
-#define e1506_dsia_bl_pwm	TEGRA_GPIO_PH0
-#define e1506_panel_enb		TEGRA_GPIO_PW1
-#define e1506_bl_enb		TEGRA_GPIO_PH2
-
 /* E1247 reworked for pm269 pins */
 #define e1247_pm269_lvds_shutdown	TEGRA_GPIO_PN6
 
