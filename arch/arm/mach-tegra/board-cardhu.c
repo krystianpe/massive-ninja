@@ -1002,6 +1002,7 @@ static void __init tegra_cardhu_init(void)
 #endif
 	cardhu_uart_init();
 	cardhu_tsensor_init();
+
 	tegra_camera_init();
 	platform_add_devices(cardhu_devices, ARRAY_SIZE(cardhu_devices));
 	tegra_ram_console_debug_init();
