@@ -616,5 +616,6 @@ source "drivers/misc/ts27010mux/Kconfig"
 source "drivers/misc/spi-tty/Kconfig"
 source "drivers/misc/radio_ctrl/Kconfig"
 source "drivers/misc/vni/Kconfig"
+source "drivers/misc/tegra-cec/Kconfig"
 
 endif # MISC_DEVICES
