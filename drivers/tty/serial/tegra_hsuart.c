@@ -40,20 +40,8 @@
 #include <linux/workqueue.h>
 #include <linux/tegra_uart.h>
 
-#include <mach/tegra_hsuart.h>
 #include <mach/dma.h>
 #include <mach/clk.h>
-
-#ifdef CONFIG_MACH_OLYMPUS
-#include <linux/rtc.h>
-#include <linux/gpio.h>
-#include <linux/wakelock.h>
-#include <linux/mdm_ctrl.h>
-
-static unsigned long tx_wake_jiffies = 0;
-static unsigned long wake_jiffies = 0;
-static struct wake_lock tegra_serial_wakelock;
-#endif
 
 #define TEGRA_UART_TYPE "TEGRA_UART"
 
@@ -136,16 +124,6 @@ struct tegra_uart_port {
 	int			uart_state;
 	bool			rx_timeout;
 	int			rx_in_progress;
-
-#ifdef CONFIG_MACH_OLYMPUS
-	int			is_ipc_uart_configured;
-	int			uart_irq;
-	unsigned		uart_wake_host;
-	unsigned		uart_wake_request;
-	bool			uart_ipc;
-	bool			uart_peer_is_dead;
-	unsigned char		ier_at_death;
-#endif
 };
 
 static void tegra_set_baudrate(struct tegra_uart_port *t, unsigned int baud);
@@ -260,26 +238,6 @@ static void tegra_start_next_tx(struct tegra_uart_port *t)
 	if (count == 0)
 		goto out;
 
-#ifdef CONFIG_MACH_OLYMPUS
-	if (t->uart_ipc) {
-		if (t->uart_peer_is_dead)
-			goto out;
-
-		/* 	Ugly hack to make sure BP stays awake for the entire tx cycle
-			Only do this when tegra_start_next_tx is called without wake_peer
-			getting called.
-		*/
-		if (!tx_wake_jiffies && t->is_ipc_uart_configured) {
-		//	printk (KERN_INFO "%s: make sure BP stays awake\n", __func__);
-			gpio_set_value(t->uart_wake_request, 1);
-			/* supposedly a pulse as short as 800ns is enough */
-			udelay(1);
-			gpio_set_value(t->uart_wake_request, 0);
-		}
-		tx_wake_jiffies = 0;
-	}
-#endif
-
 	if (!t->use_tx_dma || count < TEGRA_UART_MIN_DMA)
 		tegra_start_pio_tx(t, count);
 	else if (BYTES_TO_ALIGN(tail) > 0)
@@ -296,13 +254,9 @@ static void tegra_start_tx(struct uart_port *u)
 {
 	struct tegra_uart_port *t;
 	struct circ_buf *xmit;
-	struct tegra_hsuart_platform_data *pdata = u->dev->platform_data;
 
 	t = container_of(u, struct tegra_uart_port, uport);
 	xmit = &u->state->xmit;
-
-	if (pdata && pdata->exit_lpm_cb)
-		pdata->exit_lpm_cb(u);
 
 	if (!uart_circ_empty(xmit) && !t->tx_in_progress)
 		tegra_start_next_tx(t);
@@ -311,6 +265,8 @@ static void tegra_start_tx(struct uart_port *u)
 static int tegra_start_dma_rx(struct tegra_uart_port *t)
 {
 	wmb();
+	dma_sync_single_for_device(t->uport.dev, t->rx_dma_req.dest_addr,
+			t->rx_dma_req.size, DMA_TO_DEVICE);
 	if (tegra_dma_enqueue_req(t->rx_dma, &t->rx_dma_req)) {
 		dev_err(t->uport.dev, "Could not enqueue Rx DMA req\n");
 		return -EINVAL;
@@ -348,7 +304,6 @@ static void tegra_rx_dma_complete_callback(struct tegra_dma_req *req)
 	struct tegra_uart_port *t = req->dev;
 	struct uart_port *u = &t->uport;
 	struct tty_struct *tty = u->state->port.tty;
-	struct tegra_hsuart_platform_data *pdata = u->dev->platform_data;
 	int copied;
 
 	/* If we are here, DMA is stopped */
@@ -357,6 +312,8 @@ static void tegra_rx_dma_complete_callback(struct tegra_dma_req *req)
 		req->status);
 	if (req->bytes_transferred) {
 		t->uport.icount.rx += req->bytes_transferred;
+		dma_sync_single_for_cpu(t->uport.dev, req->dest_addr,
+				req->size, DMA_FROM_DEVICE);
 		copied = tty_insert_flip_string(tty,
 			((unsigned char *)(req->virt_addr)),
 			req->bytes_transferred);
@@ -366,6 +323,8 @@ static void tegra_rx_dma_complete_callback(struct tegra_dma_req *req)
 				"to tty layer Req %d and coped %d\n",
 				req->bytes_transferred, copied);
 		}
+		dma_sync_single_for_device(t->uport.dev, req->dest_addr,
+				req->size, DMA_TO_DEVICE);
 	}
 
 	do_handle_rx_pio(t);
@@ -377,22 +336,16 @@ static void tegra_rx_dma_complete_callback(struct tegra_dma_req *req)
 	spin_unlock(&u->lock);
 	tty_flip_buffer_push(u->state->port.tty);
 	spin_lock(&u->lock);
-	if (pdata && pdata->rx_done_cb)
-		pdata->rx_done_cb(u);
 }
 
 /* Lock already taken */
 static void do_handle_rx_dma(struct tegra_uart_port *t)
 {
 	struct uart_port *u = &t->uport;
-	struct tegra_hsuart_platform_data *pdata = u->dev->platform_data;
-
 	if (t->rts_active)
 		set_rts(t, false);
 	tegra_dma_dequeue_req(t->rx_dma, &t->rx_dma_req);
 	tty_flip_buffer_push(u->state->port.tty);
-	if (pdata && pdata->rx_done_cb)
-		pdata->rx_done_cb(u);
 	/* enqueue the request again */
 	tegra_start_dma_rx(t);
 	if (t->rts_active)
@@ -580,11 +533,10 @@ static irqreturn_t tegra_uart_isr(int irq, void *data)
 	unsigned char ier;
 	bool is_rx_int = false;
 	unsigned long flags;
-	struct tegra_hsuart_platform_data *pdata = u->dev->platform_data;
 
 	spin_lock_irqsave(&u->lock, flags);
 	t  = container_of(u, struct tegra_uart_port, uport);
-	do {
+	while (1) {
 		iir = uart_readb(t, UART_IIR);
 		if (iir & UART_IIR_NO_INT) {
 			if (likely(t->use_rx_dma) && is_rx_int) {
@@ -634,9 +586,6 @@ static irqreturn_t tegra_uart_isr(int irq, void *data)
 				spin_unlock_irqrestore(&u->lock, flags);
 				tty_flip_buffer_push(u->state->port.tty);
 				spin_lock_irqsave(&u->lock, flags);
-
-				if (pdata && pdata->rx_done_cb)
-					pdata->rx_done_cb(u);
 			}
 			break;
 		case 3: /* Receive error */
@@ -647,16 +596,7 @@ static irqreturn_t tegra_uart_isr(int irq, void *data)
 		case 7: /* break nothing to handle */
 			break;
 		}
-	} while (!t->uart_ipc || !t->uart_peer_is_dead);
-
-	/* Modem is down; disable UART interrupts. */
-	pr_warning("%s: modem is down; IER=0x%08X\n", __func__, t->ier_shadow);
-	t->ier_at_death = t->ier_shadow;
-	t->ier_shadow = 0;
-	uart_writeb(t, 0, UART_IER);
-
-	spin_unlock_irqrestore(&u->lock, flags);
-	return IRQ_HANDLED;
+	}
 }
 
 static void tegra_stop_rx(struct uart_port *u)
@@ -690,130 +630,6 @@ static void tegra_stop_rx(struct uart_port *u)
 	return;
 }
 
-#ifdef CONFIG_MACH_OLYMPUS
-static irqreturn_t tegra_ipc_uart_irq_handler(int irq, void *ptr)
-{
-	/* Handle the case where we are on the suspend path when this irq fires */
-	/* block any suspend  for 1 second */
-	wake_lock_timeout(&tegra_serial_wakelock, (HZ * 1));
-	return IRQ_HANDLED;
-}
-
-static void tegra_uart_config_gpio(struct tegra_uart_port *t)
-{
-	int err;
-
-	dev_info(t->uport.dev, "tegra_uart_config_gpio is_ipc_uart_configured=%d \n",
-		t->is_ipc_uart_configured);
-
-	if( 0 == t->is_ipc_uart_configured ) {
-
-		/* config GPIO_PF1 -> AP_WAKE_BP_UART*/
-		err = gpio_request(t->uart_wake_request, "uart_wake_request" );
-		if( err ){
-			pr_err("%s: gpio_request uart_wake_request=%d failed err=%d\n",
-				__func__, t->uart_wake_request, err);
-			goto err_gpio_config_failed;
-		}
-		else {
-			dev_info(t->uport.dev, "got handle to uart_wake_request \n" );
-		}
-
-		err = gpio_direction_output(t->uart_wake_request, 1);
-		if ( err )	{
-			pr_err("%s: gpio_direction_output uart_wake_request=%d failed err=%d\n",
-				__func__, t->uart_wake_request, err);
-			goto err_gpio_config_failed;
-		}
-		else {
-			dev_info(t->uport.dev, "configured uart_wake_request as OUTPUT\n" );
-		}
-
-		gpio_set_value(t->uart_wake_request, 0);
-
-		/* config GPIO_PA1 -> BP_WAKE_AP_UART*/
-		err = gpio_request(t->uart_wake_host, "uart_wake_host" );
-		if( err ){
-			pr_err("%s: gpio_request uart_wake_host=%d failed err=%d\n",
-				__func__, t->uart_wake_host, err);
-			goto err_gpio_config_failed;
-		}
-		else {
-			dev_info(t->uport.dev, "got handle to uart_wake_host\n" );
-		}
-
-		err = gpio_direction_input(t->uart_wake_host);
-		if ( err )	{
-			pr_err("%s: gpio_direction_output uart_wake_host=%d failed err=%d\n",
-				__func__, t->uart_wake_host, err);
-			goto err_gpio_config_failed;
-		}
-		else {
-			dev_info(t->uport.dev, "configured uart_wake_host as INPUT \n" );
-		}
-
-		gpio_set_value(t->uart_wake_host, 0);
-
-		/* get a handle to the uart_wake_host interrupt */
-		t->uart_irq = gpio_to_irq(t->uart_wake_host);
-		pr_info("%s: INTR irq: %d, current value: %d\n",
-				__func__, t->uart_irq, gpio_get_value(t->uart_wake_host));
-
-		// set falling edge for interrupt
-		irq_set_irq_type(t->uart_irq, IRQ_TYPE_EDGE_FALLING);
-		err = request_irq(t->uart_irq, tegra_ipc_uart_irq_handler,
-		    IRQF_DISABLED | IRQ_TYPE_EDGE_FALLING, "uart_wake_host", t);
-		if ( err < 0) {
-			pr_err("%s Failed to register UART BP AP WAKE interrupt handler., errno = %d\n", __func__, -err);
-			goto err_gpio_config_failed;
-		} else
-			dev_info(t->uport.dev, "registered IRQ for BP_WAKE_AP_UART ");
-
-		t->is_ipc_uart_configured = 1;
-
-	}
-
-err_gpio_config_failed:
-
-// TODO: this is not a recoverable error. There is no cleanup thats going to help the driver state.
-// TODO: We need to panic the device here to catch these errors early in development.
-
-		dev_info(t->uport.dev,	"-tegra_uart_config_gpio is_ipc_uart_configured=%d \n",
-		t->is_ipc_uart_configured);
-
-}
-
-static void tegra_uart_deconfig_gpio(struct tegra_uart_port *t)
-{
-	dev_info(t->uport.dev, "+tegra_uart_deconfig_gpio DO NOTHING ");
-	// TODO: add any tear down code here in the future.
-	dev_info(t->uport.dev, "-tegra_uart_deconfig_gpio\n");
-}
-
-static void tegra_uart_handle_peer_startup(void *context)
-{
-	struct tegra_uart_port *t = (struct tegra_uart_port *)context;
-	printk("%s: enabling IRQ %d\n", __func__, t->uart_irq);
-	t->uart_peer_is_dead = false;
-	enable_irq(t->uart_irq);
-
-	/* Attempt to restore IER...this may not go well. */
-	if (t->ier_at_death) {
-		t->ier_shadow = t->ier_at_death;
-		t->ier_at_death = 0;
-		uart_writeb(t, t->ier_shadow, UART_IER);
-	}
-}
-
-static void tegra_uart_handle_peer_shutdown(void *context)
-{
-	struct tegra_uart_port *t = (struct tegra_uart_port *)context;
-	printk("%s: disabling IRQ %d\n", __func__, t->uart_irq);
-	t->uart_peer_is_dead = true;
-	disable_irq_nosync(t->uart_irq);
-}
-#endif /* CONFIG_MACH_OLYMPUS */
-
 static void tegra_uart_hw_deinit(struct tegra_uart_port *t)
 {
 	unsigned long flags;
@@ -826,14 +642,6 @@ static void tegra_uart_hw_deinit(struct tegra_uart_port *t)
 
 	/* Disable interrupts */
 	uart_writeb(t, 0, UART_IER);
-
-#ifdef CONFIG_MACH_OLYMPUS
-	/* config uart flow control gpios */
-	if (t->uart_ipc){
-		dev_info(t->uport.dev, "deconfig GPIOs for IPC on UART line=%d\n", t->uport.line );
-		tegra_uart_deconfig_gpio(t);
-	}
-#endif
 
 	lsr = uart_readb(t, UART_LSR);
 	if ((lsr & UART_LSR_TEMT) != UART_LSR_TEMT) {
@@ -992,15 +800,6 @@ static int tegra_uart_hw_init(struct tegra_uart_port *t)
 	t->ier_shadow = ier;
 	uart_writeb(t, ier, UART_IER);
 
-#ifdef CONFIG_MACH_OLYMPUS
-	/* config ipc uart flow control gpios */
-	if (t->uart_ipc){
-		dev_info(t->uport.dev, "config GPIOs for IPC on UART line=%d\n", t->uport.line );
-		tegra_uart_config_gpio(t);
-	} else
-		dev_info(t->uport.dev, "IGNORE config GPIOs for line=%d\n", t->uport.line );
-#endif
-
 	t->uart_state = TEGRA_UART_OPENED;
 	dev_vdbg(t->uport.dev, "-tegra_uart_hw_init\n");
 	return 0;
@@ -1052,18 +851,10 @@ static int tegra_startup(struct uart_port *u)
 	struct tegra_uart_port *t = container_of(u,
 		struct tegra_uart_port, uport);
 	int ret = 0;
-//	struct tegra_uart_platform_data *pdata;
+	struct tegra_uart_platform_data *pdata;
 
 	t = container_of(u, struct tegra_uart_port, uport);
 	sprintf(t->port_name, "tegra_uart_%d", u->line);
-
-#ifdef CONFIG_MACH_OLYMPUS
-	if (u->irq == ~0) {
-		dev_err(u->dev, "Invalid IRQ (%d)\n", u->irq);
-		ret = -ENODEV;
-		goto fail;
-	}
-#endif
 
 	t->use_tx_dma = false;
 	if (!TX_FORCE_PIO) {
@@ -1102,14 +893,12 @@ static int tegra_startup(struct uart_port *u)
 	ret = tegra_uart_hw_init(t);
 	if (ret)
 		goto fail;
-#ifndef CONFIG_MACH_OLYMPUS
-	pdata = u->dev->platform_data;
-	if (pdata->is_loopback)
-		t->mcr_shadow |= UART_MCR_LOOP;
-#endif
-	dev_dbg(u->dev, "Requesting IRQ %d\n", u->irq);
-	msleep(1);
 
+	pdata = u->dev->platform_data;
+	if (pdata && pdata->is_loopback)
+		t->mcr_shadow |= UART_MCR_LOOP;
+
+	dev_dbg(u->dev, "Requesting IRQ %d\n", u->irq);
 	ret = request_irq(u->irq, tegra_uart_isr, IRQF_DISABLED,
 				t->port_name, t);
 	if (ret) {
@@ -1156,10 +945,6 @@ static void tegra_wake_peer(struct uart_port *u)
 
 	if (pdata && pdata->wake_peer)
 		pdata->wake_peer(u);
-
-#ifdef CONFIG_MACH_OLYMPUS
-	tx_wake_jiffies = wake_jiffies = jiffies;
-#endif
 }
 
 static unsigned int tegra_get_mctrl(struct uart_port *u)
@@ -1478,6 +1263,12 @@ static void tegra_set_termios(struct uart_port *u, struct ktermios *termios,
 	if (t->rts_active)
 		set_rts(t, false);
 
+	/* Clear all interrupts as configuration is going to be change */
+	uart_writeb(t, t->ier_shadow | UART_IER_RDI, UART_IER);
+	uart_readb(t, UART_IER);
+	uart_writeb(t, 0, UART_IER);
+	uart_readb(t, UART_IER);
+
 	/* Parity */
 	lcr = t->lcr_shadow;
 	lcr &= ~UART_LCR_PARITY;
@@ -1550,6 +1341,13 @@ static void tegra_set_termios(struct uart_port *u, struct ktermios *termios,
 	/* update the port timeout based on new settings */
 	uart_update_timeout(u, termios->c_cflag, baud);
 
+	/* Make sure all write has completed */
+	uart_readb(t, UART_IER);
+
+	/* Reenable interrupt */
+	uart_writeb(t, t->ier_shadow, UART_IER);
+	uart_readb(t, UART_IER);
+
 	spin_unlock_irqrestore(&u->lock, flags);
 	dev_vdbg(t->uport.dev, "-tegra_set_termios\n");
 	return;
@@ -1585,7 +1383,7 @@ static void tegra_pm(struct uart_port *u, unsigned int state,
 
 static const char *tegra_type(struct uart_port *u)
 {
-	return 0;
+	return TEGRA_UART_TYPE;
 }
 
 static struct uart_ops tegra_uart_ops = {
@@ -1616,10 +1414,9 @@ static struct uart_driver tegra_uart_driver = {
 	.nr		= 5,
 };
 
-static int tegra_uart_probe(struct platform_device *pdev)
+static int __init tegra_uart_probe(struct platform_device *pdev)
 {
 	struct tegra_uart_port *t;
-	struct tegra_hsuart_platform_data *pdata = pdev->dev.platform_data;
 	struct uart_port *u;
 	struct resource *resource;
 	int ret;
@@ -1639,7 +1436,7 @@ static int tegra_uart_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, u);
 	u->line = pdev->id;
 	u->ops = &tegra_uart_ops;
-	u->type = ~PORT_UNKNOWN;
+	u->type = PORT_TEGRA;
 	u->fifosize = 32;
 
 	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -1654,6 +1451,7 @@ static int tegra_uart_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto fail;
 	}
+	u->iotype = UPIO_MEM32;
 
 	u->irq = platform_get_irq(pdev, 0);
 	if (unlikely(u->irq < 0)) {
@@ -1669,23 +1467,6 @@ static int tegra_uart_probe(struct platform_device *pdev)
 		ret = -ENODEV;
 		goto fail;
 	}
-
-#ifdef CONFIG_MACH_OLYMPUS
-	t->uart_wake_host = pdata->uart_wake_host;
-	t->uart_wake_request = pdata->uart_wake_request;
-	t->uart_ipc = pdata->uart_ipc;
-	if (pdata->uart_ipc) printk(KERN_INFO "%s: mdm6600 config: t->uart_wake_host = %u, "
-			"t->uart_wake_request = %u, t->uart_ipc = %u\n", __func__, t->uart_wake_host, t->uart_wake_request, t->uart_ipc);
-# ifdef CONFIG_MDM_CTRL
-
-	if (pdata->uart_ipc && pdata->peer_register) {
-		printk(KERN_INFO "%s: uart peer register\n", __func__);
-		pdata->peer_register(tegra_uart_handle_peer_startup,
-		                     tegra_uart_handle_peer_shutdown,
-				     t);
-	}
-# endif
-#endif
 
 	ret = uart_add_one_port(&tegra_uart_driver, u);
 	if (ret) {
@@ -1870,7 +1651,7 @@ int tegra_uart_is_tx_empty(struct uart_port *uport)
 	return tegra_tx_empty(uport);
 }
 
-static struct platform_driver tegra_uart_platform_driver = {
+static struct platform_driver tegra_uart_platform_driver __refdata= {
 	.probe		= tegra_uart_probe,
 	.remove		= __devexit_p(tegra_uart_remove),
 	.suspend	= tegra_uart_suspend,
@@ -1883,11 +1664,6 @@ static struct platform_driver tegra_uart_platform_driver = {
 static int __init tegra_uart_init(void)
 {
 	int ret;
-
-#ifdef CONFIG_MACH_OLYMPUS
-	wake_lock_init(&tegra_serial_wakelock, WAKE_LOCK_SUSPEND,
-		"tegra_serial wakelock");
-#endif
 
 	ret = uart_register_driver(&tegra_uart_driver);
 	if (unlikely(ret)) {
@@ -1912,9 +1688,6 @@ static void __exit tegra_uart_exit(void)
 	pr_info("Unloading tegra uart driver\n");
 	platform_driver_unregister(&tegra_uart_platform_driver);
 	uart_unregister_driver(&tegra_uart_driver);
-#ifdef CONFIG_MACH_OLYMPUS
-	wake_lock_destroy(&tegra_serial_wakelock);
-#endif
 }
 
 module_init(tegra_uart_init);
