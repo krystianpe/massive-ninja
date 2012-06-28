@@ -385,7 +385,7 @@ int tegra_dc_hdmi_check_mode (const struct tegra_dc *dc, struct fb_videomode *mo
 int tegra_dc_hdmi_check_hpd_state (struct tegra_dc *dc);
 #endif
 
-/* defined in dc.c, used in bandwidth.c */
+/* defined in dc.c, used in bandwidth.c and ext/dev.c */
 unsigned int tegra_dc_has_multiple_dc(void);
 
 /* defined in dc.c, used in dsi.c */
