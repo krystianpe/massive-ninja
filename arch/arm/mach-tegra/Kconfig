@@ -493,3 +493,36 @@ config TEGRA_SLOW_CSITE
 	help
 	  When enabled, csite will be running at 1 Mhz and the performance of
 	  jtag, lauterbach and other debugger will be extremely slow.
+
+config TEGRA_PREINIT_CLOCKS
+	bool "Preinitialize Tegra clocks to known states"
+	default n
+	help
+	  Preinitialize Tegra clocks to known states before actual full-
+	  scale clock initialization starts.
+
+config TEGRA_PREPOWER_WIFI
+	bool "Pre-power up WiFi "
+	default n
+	help
+	  Pre-power up the on board WiFi chip
+
+config TEGRA_SKIN_THROTTLE
+	bool "Skin Temperature throttling"
+	depends on TEGRA_THERMAL_THROTTLE
+	depends on THERM_EST
+	default n
+	help
+	  Enable throttling to control the temperature of the skin/case
+	  of the device.
+endif
+
+config TEGRA_DC_USE_HW_BPP
+	bool "Default Bits Per Pixel value from tegra DC hardware"
+	depends on TEGRA_DC
+	default n
+        help
+	  Programs platform data to inform DC driver to use current
+	  hardware value for bits per pixel setting.  Useful for
+          preserving and displaying framebuffer content from bootloader.
+>>>>>>> 2b7077e... video: tegra: cardhu: Default bpp from hardware
