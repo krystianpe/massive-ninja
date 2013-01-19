@@ -171,6 +171,8 @@ static const unsigned long spi_tegra_req_sels[] = {
 #define MAX_CHIP_SELECT		4
 #define SLINK_FIFO_DEPTH	4
 
+static int pm_chk;
+
 struct spi_tegra_data {
 	struct spi_master	*master;
 	struct platform_device	*pdev;
@@ -236,6 +238,7 @@ struct spi_tegra_data {
 	u32			dma_control_reg;
 	u32			def_command_reg;
 	u32			def_command2_reg;
+	bool		is_suspend_failed; //20111101 ws.yang@lge.com	
 
 	struct spi_clk_parent	*parent_clk_list;
 	int			parent_clk_count;
@@ -246,20 +249,99 @@ struct spi_tegra_data {
 	struct work_struct spi_transfer_work;
 };
 
+<<<<<<< HEAD
 static inline unsigned long spi_tegra_readl(struct spi_tegra_data *tspi,
 		    unsigned long reg)
 {
 	if (!tspi->clk_state)
 		BUG();
 	return readl(tspi->base + reg);
+=======
+//20110905 ws.yang@lge.com add to init of spi [S]
+#include <mach/iomap.h>
+//20110905 ws.yang@lge.com add to init of spi [E]
+//20110808 ws.yang@lge.com add to debug [S]
+#define SPI_TEGRA_ERROR
+#ifdef SPI_TEGRA_ERROR
+#define TEGRA_ERR_LOG(format, args...) printk("[TEGRA SPI] : %s (%d line): " format "\n", __FUNCTION__, __LINE__, ## args)
+#else
+#define TEGRA_ERR_LOG(format, args...) 
+#endif
+//20110808 ws.yang@lge.com add to debug [E]
+static inline unsigned long spi_tegra_readl(struct spi_tegra_data *tspi,
+		    unsigned long reg)
+{
+	unsigned long flags;
+	unsigned long val;
+
+	spin_lock_irqsave(&tspi->reg_lock, flags);
+	if (tspi->clk_state < 1) {
+TEGRA_ERR_LOG("spi clock off"); 
+		BUG();
+	}
+	val = readl(tspi->base + reg);
+	spin_unlock_irqrestore(&tspi->reg_lock, flags);
+	return val;
+>>>>>>> 06ca946... Initial commit (Krystianp)
 }
 
 static inline void spi_tegra_writel(struct spi_tegra_data *tspi,
 		    unsigned long val, unsigned long reg)
 {
+<<<<<<< HEAD
 	if (!tspi->clk_state)
+=======
+	unsigned long flags;
+
+	spin_lock_irqsave(&tspi->reg_lock, flags);
+	if (tspi->clk_state < 1) {
+		TEGRA_ERR_LOG("spi clock off"); 	
+>>>>>>> 06ca946... Initial commit (Krystianp)
 		BUG();
+	}
 	writel(val, tspi->base + reg);
+<<<<<<< HEAD
+=======
+
+	/* Synchronize write by reading back the register */
+	readl(tspi->base + SLINK_MAS_DATA);
+	spin_unlock_irqrestore(&tspi->reg_lock, flags);
+}
+
+static int tegra_spi_clk_disable(struct spi_tegra_data *tspi)
+{
+	unsigned long flags;
+
+	/* Flush all write which are in PPSB queue by reading back */
+	spi_tegra_readl(tspi, SLINK_MAS_DATA);
+
+	spin_lock_irqsave(&tspi->reg_lock, flags);
+	tspi->clk_state--;
+	spin_unlock_irqrestore(&tspi->reg_lock, flags);
+	clk_disable(tspi->clk);
+	clk_disable(tspi->sclk);
+	return 0;
+}
+
+static int tegra_spi_clk_enable(struct spi_tegra_data *tspi)
+{
+	unsigned long flags;
+
+	clk_enable(tspi->sclk);
+	clk_enable(tspi->clk);
+	spin_lock_irqsave(&tspi->reg_lock, flags);
+	tspi->clk_state++;
+	spin_unlock_irqrestore(&tspi->reg_lock, flags);
+	return 0;
+}
+
+static void cancel_dma(struct tegra_dma_channel *dma_chan,
+	struct tegra_dma_req *req)
+{
+	tegra_dma_cancel(dma_chan);
+	if (req->status == -TEGRA_DMA_REQ_ERROR_ABORTED)
+		req->complete(req);
+>>>>>>> 06ca946... Initial commit (Krystianp)
 }
 
 static void spi_tegra_clear_status(struct spi_tegra_data *tspi)
@@ -544,8 +626,14 @@ static int spi_tegra_start_dma_based_transfer(
 		tspi->tx_dma_req.size = len;
 		ret = tegra_dma_enqueue_req(tspi->tx_dma, &tspi->tx_dma_req);
 		if (ret < 0) {
+<<<<<<< HEAD
 			dev_err(&tspi->pdev->dev, "Error in starting tx dma "
 						" error = %d\n", ret);
+=======
+			dev_err(&tspi->pdev->dev,
+				"Error in starting tx dma error = %d\n", ret);
+			TEGRA_ERR_LOG("Error in starting tx dma error = %d\n", ret); 				
+>>>>>>> 06ca946... Initial commit (Krystianp)
 			return ret;
 		}
 
@@ -565,8 +653,13 @@ static int spi_tegra_start_dma_based_transfer(
 			dev_err(&tspi->pdev->dev, "Error in starting rx dma "
 						" error = %d\n", ret);
 			if (tspi->cur_direction & DATA_DIR_TX)
+<<<<<<< HEAD
 				tegra_dma_dequeue_req(tspi->tx_dma,
 							&tspi->tx_dma_req);
+=======
+				cancel_dma(tspi->tx_dma, &tspi->tx_dma_req);
+			TEGRA_ERR_LOG("%s: Error in starting rx dma ret = %d\n", __func__, ret); 	
+>>>>>>> 06ca946... Initial commit (Krystianp)
 			return ret;
 		}
 	}
@@ -617,6 +710,28 @@ static int spi_tegra_start_cpu_based_transfer(
 	val |= SLINK_DMA_EN;
 	spi_tegra_writel(tspi, val, SLINK_DMA_CTL);
 	return 0;
+}
+
+
+//20110721 ws.yang@lge.com add to check suspend of  ifx_n721_spi.c [S]
+bool spi_tegra_is_suspend(struct spi_device *spi)
+{
+	struct spi_tegra_data *tspi = spi_master_get_devdata(spi->master);
+
+	return tspi->is_suspended;
+}
+//20110721 ws.yang@lge.com add to check suspend of  ifx_n721_spi.c [E]
+
+
+//20111101 ws.yang@lge.com .. to test
+bool spi_tegra_suspend_failed(struct spi_device *spi)
+{
+	struct spi_tegra_data *tspi = spi_master_get_devdata(spi->master);
+
+	if (tspi->is_suspend_failed == true)
+        	TEGRA_ERR_LOG("tspi->is_suspend_failed=%d", tspi->is_suspend_failed);
+	
+	return tspi->is_suspend_failed;
 }
 
 static void set_best_clk_source(struct spi_tegra_data *tspi,
@@ -723,12 +838,17 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 
 	command2 = tspi->def_command2_reg;
 	if (is_first_of_msg) {
+<<<<<<< HEAD
 		if (!tspi->is_clkon_always) {
 			if (!tspi->clk_state) {
 				pm_runtime_get_sync(&tspi->pdev->dev);
 				tspi->clk_state = 1;
 			}
 		}
+=======
+		pm_runtime_get_sync(&tspi->pdev->dev);
+		tegra_spi_clk_enable(tspi);
+>>>>>>> 06ca946... Initial commit (Krystianp)
 
 		spi_tegra_clear_status(tspi);
 
@@ -840,6 +960,12 @@ static int spi_tegra_setup(struct spi_device *spi)
 		return -EINVAL;
 	}
 
+<<<<<<< HEAD
+=======
+	pm_runtime_get_sync(&tspi->pdev->dev);
+	tegra_spi_clk_enable(tspi);
+
+>>>>>>> 06ca946... Initial commit (Krystianp)
 	spin_lock_irqsave(&tspi->lock, flags);
 	val = tspi->def_command_reg;
 	if (spi->mode & SPI_CS_HIGH)
@@ -848,6 +974,7 @@ static int spi_tegra_setup(struct spi_device *spi)
 		val &= ~cs_bit;
 	tspi->def_command_reg |= val;
 
+<<<<<<< HEAD
 	if (!tspi->is_clkon_always && !tspi->clk_state) {
 		spin_unlock_irqrestore(&tspi->lock, flags);
 		pm_runtime_get_sync(&tspi->pdev->dev);
@@ -861,6 +988,10 @@ static int spi_tegra_setup(struct spi_device *spi)
 		pm_runtime_put_sync(&tspi->pdev->dev);
 	} else
 		spin_unlock_irqrestore(&tspi->lock, flags);
+=======
+	tegra_spi_clk_disable(tspi);
+	pm_runtime_put_sync(&tspi->pdev->dev);
+>>>>>>> 06ca946... Initial commit (Krystianp)
 	return 0;
 }
 
@@ -906,12 +1037,16 @@ static int spi_tegra_transfer(struct spi_device *spi, struct spi_message *m)
 	int was_empty;
 	int bytes_per_word;
 
-	if (list_empty(&m->transfers) || !m->complete)
+	if (list_empty(&m->transfers) || !m->complete) {
+		TEGRA_ERR_LOG("return -EINVAL !!! list empty");			
 		return -EINVAL;
+	}
 
 	list_for_each_entry(t, &m->transfers, transfer_list) {
-		if (t->bits_per_word < 0 || t->bits_per_word > 32)
+		if (t->bits_per_word < 0 || t->bits_per_word > 32) {
+		TEGRA_ERR_LOG("-EINVAL: t->bits_per_word=%d",t->bits_per_word);					
 			return -EINVAL;
+		}
 
 		if (t->len == 0)
 			return -EINVAL;
@@ -925,14 +1060,17 @@ static int spi_tegra_transfer(struct spi_device *spi, struct spi_message *m)
 		if (t->len % bytes_per_word != 0)
 			return -EINVAL;
 
-		if (!t->rx_buf && !t->tx_buf)
+		if (!t->rx_buf && !t->tx_buf) {
+			TEGRA_ERR_LOG("-EINVAL: buf null");							
 			return -EINVAL;
+		}
 	}
 
 	spin_lock_irqsave(&tspi->lock, flags);
 
 	if (WARN_ON(tspi->is_suspended)) {
 		spin_unlock_irqrestore(&tspi->lock, flags);
+		TEGRA_ERR_LOG("return -EBUSY!!!  tspi->is_suspended=%d\n", tspi->is_suspended);				
 		return -EBUSY;
 	}
 
@@ -965,6 +1103,8 @@ static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
 		m->status = -EIO;
 	spi = m->state;
 
+	if(m->status != 0)
+		TEGRA_ERR_LOG("m->status = %d\n", m->status); 
 	m->actual_length += cur_xfer_size;
 
 	if (!list_is_last(&tspi->cur->transfer_list, &m->transfers)) {
@@ -1002,6 +1142,7 @@ static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
 								SLINK_COMMAND);
 			spi_tegra_writel(tspi, tspi->def_command2_reg,
 								SLINK_COMMAND2);
+<<<<<<< HEAD
 			if (!tspi->is_clkon_always) {
 				if (tspi->clk_state) {
 					/* Provide delay to stablize the signal
@@ -1015,6 +1156,14 @@ static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
 					tspi->clk_state = 0;
 				}
 			}
+=======
+			/* Provide delay to stablize the signal state */
+			spin_unlock_irqrestore(&tspi->lock, *irq_flags);
+			udelay(10);
+			tegra_spi_clk_disable(tspi);
+			pm_runtime_put_sync(&tspi->pdev->dev);
+			spin_lock_irqsave(&tspi->lock, *irq_flags);
+>>>>>>> 06ca946... Initial commit (Krystianp)
 			tspi->is_transfer_in_progress = false;
 			/* Check if any new request has come between
 			 * clock disable */
@@ -1048,6 +1197,13 @@ static void handle_cpu_based_xfer(void *context_data)
 				(tspi->status_reg & SLINK_BSY)) {
 		dev_err(&tspi->pdev->dev, "%s ERROR bit set 0x%x\n",
 					 __func__, tspi->status_reg);
+<<<<<<< HEAD
+=======
+		dev_err(&tspi->pdev->dev, "%s 0x%08x:0x%08x:0x%08x\n",
+				__func__, tspi->command_reg, tspi->command2_reg,
+				tspi->dma_control_reg);
+		TEGRA_ERR_LOG("ERROR bit set 0x%x\n", tspi->status_reg); 		
+>>>>>>> 06ca946... Initial commit (Krystianp)
 		tegra_periph_reset_assert(tspi->clk);
 		udelay(2);
 		tegra_periph_reset_deassert(tspi->clk);
@@ -1107,10 +1263,17 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 			wait_status = wait_for_completion_interruptible_timeout(
 				&tspi->tx_dma_complete, SLINK_DMA_TIMEOUT);
 			if (wait_status <= 0) {
+<<<<<<< HEAD
 				tegra_dma_dequeue_req(tspi->tx_dma,
 								&tspi->tx_dma_req);
 				dev_err(&tspi->pdev->dev, "Error in Dma Tx "
 							"transfer\n");
+=======
+				cancel_dma(tspi->tx_dma, &tspi->tx_dma_req);
+				dev_err(&tspi->pdev->dev,
+					"Error in Dma Tx transfer\n");
+				TEGRA_ERR_LOG("Error in Dma Tx transfer\n");			
+>>>>>>> 06ca946... Initial commit (Krystianp)
 				err += 1;
 			}
 		}
@@ -1124,10 +1287,17 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 			wait_status = wait_for_completion_interruptible_timeout(
 				&tspi->rx_dma_complete, SLINK_DMA_TIMEOUT);
 			if (wait_status <= 0) {
+<<<<<<< HEAD
 				tegra_dma_dequeue_req(tspi->rx_dma,
 							&tspi->rx_dma_req);
 				dev_err(&tspi->pdev->dev, "Error in Dma Rx "
 							"transfer\n");
+=======
+				cancel_dma(tspi->rx_dma, &tspi->rx_dma_req);
+				dev_err(&tspi->pdev->dev,
+					"Error in Dma Rx transfer\n");
+				TEGRA_ERR_LOG("Error in Dma Rx transfer\n");									
+>>>>>>> 06ca946... Initial commit (Krystianp)
 				err += 2;
 			}
 		}
@@ -1137,6 +1307,13 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 	if (err) {
 		dev_err(&tspi->pdev->dev, "%s ERROR bit set 0x%x\n",
 					 __func__, tspi->status_reg);
+<<<<<<< HEAD
+=======
+		dev_err(&tspi->pdev->dev, "%s 0x%08x:0x%08x:0x%08x\n",
+				__func__, tspi->command_reg, tspi->command2_reg,
+				tspi->dma_control_reg);
+		TEGRA_ERR_LOG("Error  bit set 0x%x\n", tspi->status_reg); 						
+>>>>>>> 06ca946... Initial commit (Krystianp)
 		tegra_periph_reset_assert(tspi->clk);
 		udelay(2);
 		tegra_periph_reset_deassert(tspi->clk);
@@ -1284,7 +1461,8 @@ static int __init spi_tegra_probe(struct platform_device *pdev)
 		tspi->parent_clk_list = pdata->parent_clk_list;
 		tspi->max_rate = pdata->max_rate;
 	} else {
-		tspi->is_clkon_always = false;
+		//tspi->is_clkon_always = false;
+		tspi->is_clkon_always = true;
 		tspi->is_dma_allowed = true;
 		tspi->dma_buf_size = DEFAULT_SPI_DMA_BUF_LEN;
 		tspi->parent_clk_count = 0;
@@ -1385,6 +1563,7 @@ static int __init spi_tegra_probe(struct platform_device *pdev)
 
 skip_dma_alloc:
 	pm_runtime_enable(&pdev->dev);
+<<<<<<< HEAD
 	pm_runtime_get_sync(&pdev->dev);
 	tspi->clk_state = 1;
 	master->dev.of_node = pdev->dev.of_node;
@@ -1402,18 +1581,38 @@ skip_dma_alloc:
 	}
 
 	/* create the workqueue for the kbc path */
+=======
+
+	/* Enable clock if it is require to be enable always */
+	if (tspi->is_clkon_always)
+		tegra_spi_clk_enable(tspi);
+
+	/* create the workqueue for the spi transfer */
+>>>>>>> 06ca946... Initial commit (Krystianp)
 	snprintf(spi_wq_name, sizeof(spi_wq_name), "spi_tegra-%d", pdev->id);
 	tspi->spi_workqueue = create_singlethread_workqueue(spi_wq_name);
 	if (!tspi->spi_workqueue) {
 		dev_err(&pdev->dev, "Failed to create work queue\n");
 		ret = -ENODEV;
+<<<<<<< HEAD
 		goto fail_workqueue;
+=======
+		goto exit_fail_wq;
+>>>>>>> 06ca946... Initial commit (Krystianp)
 	}
 
 	INIT_WORK(&tspi->spi_transfer_work, tegra_spi_transfer_work);
 
+	master->dev.of_node = pdev->dev.of_node;
+	ret = spi_register_master(master);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "can not register to master err %d\n", ret);
+		goto exit_destry_wq;
+	}
+
 	return ret;
 
+<<<<<<< HEAD
 fail_workqueue:
 	spi_unregister_master(master);
 
@@ -1440,6 +1639,23 @@ fail_irq_req:
 fail_io_map:
 	release_mem_region(r->start, resource_size(r));
 fail_no_mem:
+=======
+exit_destry_wq:
+	destroy_workqueue(tspi->spi_workqueue);
+
+exit_fail_wq:
+	if (tspi->is_clkon_always)
+		tegra_spi_clk_disable(tspi);
+
+	pm_runtime_disable(&pdev->dev);
+
+	spi_tegra_deinit_dma_param(tspi, false);
+
+exit_rx_dma_free:
+	spi_tegra_deinit_dma_param(tspi, true);
+
+exit_free_master:
+>>>>>>> 06ca946... Initial commit (Krystianp)
 	spi_master_put(master);
 	return ret;
 }
@@ -1465,6 +1681,7 @@ static int __devexit spi_tegra_remove(struct platform_device *pdev)
 	if (tspi->rx_dma)
 		tegra_dma_free_channel(tspi->rx_dma);
 
+<<<<<<< HEAD
 	if (tspi->is_clkon_always) {
 		pm_runtime_put_sync(&pdev->dev);
 		tspi->clk_state = 0;
@@ -1473,6 +1690,13 @@ static int __devexit spi_tegra_remove(struct platform_device *pdev)
 	pm_runtime_disable(&pdev->dev);
 	clk_put(tspi->clk);
 	iounmap(tspi->base);
+=======
+	/* Disable clock if it is always enabled */
+	if (tspi->is_clkon_always)
+		tegra_spi_clk_disable(tspi);
+
+	pm_runtime_disable(&pdev->dev);
+>>>>>>> 06ca946... Initial commit (Krystianp)
 
 	destroy_workqueue(tspi->spi_workqueue);
 
@@ -1529,10 +1753,18 @@ static int spi_tegra_suspend(struct platform_device *pdev, pm_message_t state)
 	}
 
 	spin_unlock_irqrestore(&tspi->lock, flags);
+<<<<<<< HEAD
 	if (tspi->is_clkon_always) {
 		pm_runtime_put_sync(&pdev->dev);
 		tspi->clk_state = 0;
 	}
+=======
+
+	/* Disable clock if it is always enabled */
+	if (tspi->is_clkon_always)
+		tegra_spi_clk_disable(tspi);
+
+>>>>>>> 06ca946... Initial commit (Krystianp)
 	return 0;
 }
 
@@ -1546,6 +1778,7 @@ static int spi_tegra_resume(struct platform_device *pdev)
 	int single_xfer = 0;
 	unsigned long flags;
 
+<<<<<<< HEAD
 	master = dev_get_drvdata(&pdev->dev);
 	tspi = spi_master_get_devdata(master);
 
@@ -1556,10 +1789,24 @@ static int spi_tegra_resume(struct platform_device *pdev)
 		pm_runtime_put_sync(&pdev->dev);
 		tspi->clk_state = 0;
 	}
+=======
+	/* Enable clock if it is always enabled */
+	if (tspi->is_clkon_always)
+		tegra_spi_clk_enable(tspi);
+
+	pm_runtime_get_sync(dev);
+	tegra_spi_clk_enable(tspi);
+	spi_tegra_writel(tspi, tspi->command_reg, SLINK_COMMAND);
+	tegra_spi_clk_disable(tspi);
+	pm_runtime_put_sync(dev);
+
+>>>>>>> 06ca946... Initial commit (Krystianp)
 	spin_lock_irqsave(&tspi->lock, flags);
 
 	tspi->cur_speed = 0;
 	tspi->is_suspended = false;
+	tspi->is_suspend_failed = false;	//20111101 ws.yang@lge.com .. to test		
+
 	if (!list_empty(&tspi->queue)) {
 		m = list_first_entry(&tspi->queue, struct spi_message, queue);
 		spi = m->state;
@@ -1577,6 +1824,7 @@ static int spi_tegra_resume(struct platform_device *pdev)
 }
 #endif
 
+<<<<<<< HEAD
 #if defined(CONFIG_PM_RUNTIME)
 
 static int tegra_spi_runtime_idle(struct device *dev)
@@ -1604,6 +1852,13 @@ static int tegra_spi_runtime_resume(struct device *dev)
 static const struct dev_pm_ops tegra_spi_dev_pm_ops = {
 	.runtime_idle = tegra_spi_runtime_idle,
 	.runtime_resume = tegra_spi_runtime_resume,
+=======
+static const struct dev_pm_ops tegra_spi_dev_pm_ops = {
+#ifdef CONFIG_PM
+	.suspend = spi_tegra_suspend,
+	.resume = spi_tegra_resume,
+#endif
+>>>>>>> 06ca946... Initial commit (Krystianp)
 };
 
 #endif
