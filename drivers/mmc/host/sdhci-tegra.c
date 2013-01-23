@@ -31,6 +31,7 @@
 #include <mach/sdhci.h>
 #include <mach/io_dpd.h>
 
+#include "sdhci.h"
 #include "sdhci-pltfm.h"
 
 #define SDHCI_VENDOR_CLOCK_CNTRL	0x100
@@ -60,7 +61,13 @@
 #define SDHOST_LOW_VOLT_MIN	1800000
 #define SDHOST_LOW_VOLT_MAX	1800000
 
+// 2012-08-03 hyeondug.yeo@lge.com, Set SDIO clock for Wi-Fi.[S]
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#define TEGRA_SDHOST_MIN_FREQ	12000000 // From K36
+#else
 #define TEGRA_SDHOST_MIN_FREQ	50000000
+#endif
+// 2012-08-03 hyeondug.yeo@lge.com, Set SDIO clock for Wi-Fi.[E]
 #define TEGRA2_SDHOST_STD_FREQ	50000000
 #define TEGRA3_SDHOST_STD_FREQ	104000000
 
@@ -85,9 +92,7 @@ struct tegra_sdhci_hw_ops{
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 static struct tegra_sdhci_hw_ops tegra_2x_sdhci_ops = {
 };
-#endif
-
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#else
 static struct tegra_sdhci_hw_ops tegra_3x_sdhci_ops = {
 	.set_card_clock = tegra_3x_sdhci_set_card_clock,
 	.sdhost_init = tegra3_sdhci_post_reset_init,
@@ -96,6 +101,10 @@ static struct tegra_sdhci_hw_ops tegra_3x_sdhci_ops = {
 
 struct tegra_sdhci_host {
 	bool	clk_enabled;
+// LGE_CHANGE [dojip.kim@lge.com] 2010-12-31, [LGE_AP20] from Star
+#ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
+	unsigned int StartOffset;
+#endif
 	struct regulator *vdd_io_reg;
 	struct regulator *vdd_slot_reg;
 	/* Pointer to the chip specific HW ops */
@@ -112,6 +121,18 @@ struct tegra_sdhci_host {
 	bool card_present;
 	bool is_rail_enabled;
 };
+
+// LGE_CHANGE [dojip.kim@lge.com] 2010-12-31, [LGE_AP20] from Star
+#ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
+static unsigned int tegra_sdhci_get_StartOffset(struct sdhci_host *host)
+{
+	struct tegra_sdhci_host *t_sdhci_host;
+
+	t_sdhci_host = ((struct sdhci_pltfm_host *)sdhci_priv(host))->priv;
+
+	return t_sdhci_host->StartOffset;
+}
+#endif
 
 static u32 tegra_sdhci_readl(struct sdhci_host *host, int reg)
 {
@@ -805,6 +826,7 @@ out:
 	return err;
 }
 
+<<<<<<< HEAD
 static int tegra_sdhci_suspend(struct sdhci_host *sdhci, pm_message_t state)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
@@ -889,33 +911,28 @@ static struct sdhci_pltfm_data sdhci_tegra_pdata = {
 };
 
 static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
+=======
+static int tegra_sdhci_pltfm_init(struct sdhci_host *host,
+				  struct sdhci_pltfm_data *pdata)
+>>>>>>> 04f2966... new changes
 {
-	struct sdhci_pltfm_host *pltfm_host;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct platform_device *pdev = to_platform_device(mmc_dev(host->mmc));
 	struct tegra_sdhci_platform_data *plat;
-	struct sdhci_host *host;
 	struct tegra_sdhci_host *tegra_host;
 	struct clk *clk;
 	int rc;
 
-	host = sdhci_pltfm_init(pdev, &sdhci_tegra_pdata);
-	if (IS_ERR(host))
-		return PTR_ERR(host);
-
-	pltfm_host = sdhci_priv(host);
-
 	plat = pdev->dev.platform_data;
-
 	if (plat == NULL) {
 		dev_err(mmc_dev(host->mmc), "missing platform data\n");
-		rc = -ENXIO;
-		goto err_no_plat;
+		return -ENXIO;
 	}
 
 	tegra_host = kzalloc(sizeof(struct tegra_sdhci_host), GFP_KERNEL);
 	if (tegra_host == NULL) {
 		dev_err(mmc_dev(host->mmc), "failed to allocate tegra host\n");
-		rc = -ENOMEM;
-		goto err_no_mem;
+		return -ENOMEM;
 	}
 
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
@@ -932,32 +949,50 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 		if (rc) {
 			dev_err(mmc_dev(host->mmc),
 				"failed to allocate power gpio\n");
-			goto err_power_req;
+			goto out;
 		}
 		tegra_gpio_enable(plat->power_gpio);
 		gpio_direction_output(plat->power_gpio, 1);
 	}
 
 	if (gpio_is_valid(plat->cd_gpio)) {
-		rc = gpio_request(plat->cd_gpio, "sdhci_cd");
-		if (rc) {
-			dev_err(mmc_dev(host->mmc),
-				"failed to allocate cd gpio\n");
-			goto err_cd_req;
-		}
-		tegra_gpio_enable(plat->cd_gpio);
-		gpio_direction_input(plat->cd_gpio);
 
-		tegra_host->card_present = (gpio_get_value(plat->cd_gpio) == 0);
+// LGE_CHANGE_S, [WiFi][ella.hwang@lge.com, moon-wifi@lge.com], 20120319, for X2-KDDI(KS1103) ICS
+#if defined (CONFIG_MACH_BSSQ)
+		if(plat->cd_gpio != 99){
+#else // CONFIG_MACH_BSSQ
+/*  sangjun.bae 20120220 wifi bringup START */
+
+		if(plat->cd_gpio != 177){ // 20111028 jooin.woo@lge.com [Wi-Fi] initial work [START]
+#endif // CONFIG_MACH_BSSQ
+// LGE_CHANGE_E, [WiFi][ella.hwang@lge.com, moon-wifi@lge.com], 20120319, for X2-KDDI(KS1103) ICS
+			rc = gpio_request(plat->cd_gpio, "sdhci_cd");
+			if (rc) {
+				dev_err(mmc_dev(host->mmc),
+					"failed to allocate cd gpio\n");
+				goto out_power;
+			}
+			tegra_gpio_enable(plat->cd_gpio);
+			gpio_direction_input(plat->cd_gpio);
+		} // 20111028 jooin.woo@lge.com [Wi-Fi] initial work [START]
+		printk("[mingi.sung] sdhci_tegra probe() - before carddetect : WLAN_RST status is : %d", gpio_get_value(177));
+/*		tegra_host->card_present = (gpio_get_value(plat->cd_gpio) == 0);
 
 		rc = request_threaded_irq(gpio_to_irq(plat->cd_gpio), NULL,
 				 carddetect_irq,
 				 IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
 				 mmc_hostname(host->mmc), host);
+*/
+		rc = request_irq(gpio_to_irq(plat->cd_gpio), carddetect_irq,
+				 IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
+				 mmc_hostname(host->mmc), host);
+
+		printk("[mingi.sung] sdhci_tegra probe() - after carddetect : WLAN_RST status is : %d", gpio_get_value(177));
+/*  sangjun.bae 20120220 wifi bringup END */
 
 		if (rc)	{
 			dev_err(mmc_dev(host->mmc), "request irq error\n");
-			goto err_cd_irq_req;
+			goto out_cd;
 		}
 		rc = enable_irq_wake(gpio_to_irq(plat->cd_gpio));
 		if (rc < 0)
@@ -969,6 +1004,13 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 		plat->mmc_data.register_status_notify(sdhci_status_notify_cb, host);
 	}
 
+        /*
+         * If there is no card detect gpio, assume that the
+         * card is always present.
+         */
+        if (!gpio_is_valid(plat->cd_gpio))
+                tegra_host->card_present = 1;
+
 	if (plat->mmc_data.status) {
 		plat->mmc_data.card_present = plat->mmc_data.status(mmc_dev(host->mmc));
 	}
@@ -978,7 +1020,7 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 		if (rc) {
 			dev_err(mmc_dev(host->mmc),
 				"failed to allocate wp gpio\n");
-			goto err_wp_req;
+			goto out_irq;
 		}
 		tegra_gpio_enable(plat->wp_gpio);
 		gpio_direction_input(plat->wp_gpio);
@@ -1028,15 +1070,25 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 		}
 	}
 
+	// LGE_CHANGE [dojip.kim@lge.com] 2010-12-31, [LGE_AP20] from Star
+#ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
+	tegra_host->StartOffset = plat->startoffset;
+	printk(KERN_INFO "tegra_sdhci_probe: host->StartOffset: %d\n", tegra_host->StartOffset);
+#endif
+	
 	clk = clk_get(mmc_dev(host->mmc), NULL);
 	if (IS_ERR(clk)) {
 		dev_err(mmc_dev(host->mmc), "clk err\n");
 		rc = PTR_ERR(clk);
-		goto err_clk_get;
+		goto out_wp;
 	}
 	rc = clk_enable(clk);
 	if (rc != 0)
+<<<<<<< HEAD
 		goto err_clk_put;
+=======
+		goto err_clkput;
+>>>>>>> 04f2966... new changes
 	pltfm_host->clk = clk;
 	pltfm_host->priv = tegra_host;
 	tegra_host->clk_enabled = true;
@@ -1044,8 +1096,11 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 	tegra_host->instance = pdev->id;
 	tegra_host->dpd = tegra_io_dpd_get(mmc_dev(host->mmc));
 
+<<<<<<< HEAD
 	host->mmc->pm_caps = plat->pm_flags;
 
+=======
+>>>>>>> 04f2966... new changes
 	host->mmc->caps |= MMC_CAP_ERASE;
 	host->mmc->caps |= MMC_CAP_DISABLE;
 	/* enable 1/8V DDR capable */
@@ -1053,12 +1108,19 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 	if (plat->is_8bit)
 		host->mmc->caps |= MMC_CAP_8_BIT_DATA;
 	host->mmc->caps |= MMC_CAP_SDIO_IRQ;
+	host->mmc->caps |= MMC_CAP_BKOPS;
 
-	host->mmc->pm_caps |= MMC_PM_KEEP_POWER | MMC_PM_IGNORE_PM_NOTIFY;
+	host->mmc->pm_caps = MMC_PM_KEEP_POWER | MMC_PM_IGNORE_PM_NOTIFY;
 	if (plat->mmc_data.built_in) {
 		host->mmc->caps |= MMC_CAP_NONREMOVABLE;
+<<<<<<< HEAD
 		host->mmc->pm_flags |= MMC_PM_IGNORE_PM_NOTIFY;
 	}
+=======
+	} // 2012-08-03 hyeondug.yeo@lge.com, Set SDIO clock for Wi-Fi.
+	host->mmc->pm_flags = MMC_PM_IGNORE_PM_NOTIFY;	//Nvidia internal change
+
+>>>>>>> 04f2966... new changes
 	/* Do not turn OFF embedded sdio cards as it support Wake on Wireless */
 	if (plat->mmc_data.embedded_sdio)
 		host->mmc->pm_flags |= MMC_PM_KEEP_POWER;
@@ -1072,51 +1134,51 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 	tegra_sdhost_std_freq = TEGRA3_SDHOST_STD_FREQ;
 #endif
 
-	rc = sdhci_add_host(host);
-	if (rc)
-		goto err_add_host;
-
 	return 0;
 
+<<<<<<< HEAD
 err_add_host:
 	clk_disable(pltfm_host->clk);
 err_clk_put:
 	clk_put(pltfm_host->clk);
 err_clk_get:
+=======
+err_clkput:
+	clk_put(clk);
+
+out_wp:
+>>>>>>> 04f2966... new changes
 	if (gpio_is_valid(plat->wp_gpio)) {
 		tegra_gpio_disable(plat->wp_gpio);
 		gpio_free(plat->wp_gpio);
 	}
-err_wp_req:
+
+out_irq:
 	if (gpio_is_valid(plat->cd_gpio))
 		free_irq(gpio_to_irq(plat->cd_gpio), host);
-err_cd_irq_req:
+out_cd:
 	if (gpio_is_valid(plat->cd_gpio)) {
 		tegra_gpio_disable(plat->cd_gpio);
 		gpio_free(plat->cd_gpio);
 	}
-err_cd_req:
+
+out_power:
 	if (gpio_is_valid(plat->power_gpio)) {
 		tegra_gpio_disable(plat->power_gpio);
 		gpio_free(plat->power_gpio);
 	}
-err_power_req:
-err_no_mem:
+
+out:
 	kfree(tegra_host);
-err_no_plat:
-	sdhci_pltfm_free(pdev);
 	return rc;
 }
 
-static int __devexit sdhci_tegra_remove(struct platform_device *pdev)
+static void tegra_sdhci_pltfm_exit(struct sdhci_host *host)
 {
-	struct sdhci_host *host = platform_get_drvdata(pdev);
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct platform_device *pdev = to_platform_device(mmc_dev(host->mmc));
 	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
 	struct tegra_sdhci_platform_data *plat;
-	int dead = (readl(host->ioaddr + SDHCI_INT_STATUS) == 0xffffffff);
-
-	sdhci_remove_host(host, dead);
 
 	plat = pdev->dev.platform_data;
 
@@ -1152,37 +1214,124 @@ static int __devexit sdhci_tegra_remove(struct platform_device *pdev)
 		clk_disable(pltfm_host->clk);
 	clk_put(pltfm_host->clk);
 
-	sdhci_pltfm_free(pdev);
 	kfree(tegra_host);
+}
+
+static int tegra_sdhci_suspend(struct sdhci_host *sdhci, pm_message_t state)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
+
+// 2012-08-03 hyeondug.yeo@lge.com, Set SDIO clock for Wi-Fi.[S]
+#if defined (CONFIG_MACH_STAR) // From K36 code
+	if (sdhci->mmc->pm_flags & MMC_PM_KEEP_POWER) {
+		int div = 0;
+		u16 clk;
+		unsigned int clock = 100000;
+
+		/* reduce host controller clk and card clk to 100 KHz */
+		tegra_sdhci_set_clock(sdhci, clock);
+		sdhci_writew(sdhci, 0, SDHCI_CLOCK_CONTROL);
+
+		if (sdhci->max_clk > clock) {
+			div =  1 << (fls(sdhci->max_clk / clock) - 2);
+			if (div > 128)
+				div = 128;
+		}
+
+		clk = div << SDHCI_DIVIDER_SHIFT;
+		clk |= SDHCI_CLOCK_INT_EN | SDHCI_CLOCK_CARD_EN;
+		sdhci_writew(sdhci, clk, SDHCI_CLOCK_CONTROL);
+		
+		return 0;
+	}
+#endif
+// 2012-08-03 hyeondug.yeo@lge.com, Set SDIO clock for Wi-Fi.[E]
+
+	tegra_sdhci_set_clock(sdhci, 0);
+
+	/* Disable the power rails if any */
+	if (tegra_host->card_present) {
+		if (tegra_host->is_rail_enabled) {
+			if (tegra_host->vdd_io_reg)
+				regulator_disable(tegra_host->vdd_io_reg);
+			if (tegra_host->vdd_slot_reg)
+				regulator_disable(tegra_host->vdd_slot_reg);
+			tegra_host->is_rail_enabled = 0;
+		}
+	}
 
 	return 0;
 }
 
-static struct platform_driver sdhci_tegra_driver = {
-	.driver		= {
-		.name	= "sdhci-tegra",
-		.owner	= THIS_MODULE,
-	},
-	.probe		= sdhci_tegra_probe,
-	.remove		= __devexit_p(sdhci_tegra_remove),
-#ifdef CONFIG_PM
-	.suspend	= sdhci_pltfm_suspend,
-	.resume		= sdhci_pltfm_resume,
+static int tegra_sdhci_resume(struct sdhci_host *sdhci)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
+
+	/* Enable the power rails if any */
+	if (tegra_host->card_present) {
+		if (!tegra_host->is_rail_enabled) {
+			if (tegra_host->vdd_slot_reg)
+				regulator_enable(tegra_host->vdd_slot_reg);
+			if (tegra_host->vdd_io_reg) {
+                                regulator_enable(tegra_host->vdd_io_reg);
+                                tegra_sdhci_signal_voltage_switch(sdhci, MMC_SIGNAL_VOLTAGE_330);
+                        }
+			tegra_host->is_rail_enabled = 1;
+		}
+	}
+
+	/* Setting the min identification clock of freq 400KHz */
+	tegra_sdhci_set_clock(sdhci, 400000);
+
+	/* Reset the controller and power on if MMC_KEEP_POWER flag is set*/
+	if (sdhci->mmc->pm_flags & MMC_PM_KEEP_POWER) {
+		tegra_sdhci_reset(sdhci, SDHCI_RESET_ALL);
+
+		sdhci_writeb(sdhci, SDHCI_POWER_ON, SDHCI_POWER_CONTROL);
+		sdhci->pwr = 0;
+	}
+
+	return 0;
+}
+
+static struct sdhci_ops tegra_sdhci_ops = {
+	.get_ro     = tegra_sdhci_get_ro,
+	.get_cd     = tegra_sdhci_get_cd,
+	.read_l     = tegra_sdhci_readl,
+	.read_w     = tegra_sdhci_readw,
+	.write_l    = tegra_sdhci_writel,
+	.platform_8bit_width = tegra_sdhci_8bit,
+	.set_clock  = tegra_sdhci_set_clock,
+	.suspend    = tegra_sdhci_suspend,
+	.resume     = tegra_sdhci_resume,
+	.platform_reset_exit = tegra_sdhci_reset_exit,
+	.set_uhs_signaling = tegra_sdhci_set_uhs_signaling,
+	.switch_signal_voltage = tegra_sdhci_signal_voltage_switch,
+	// LGE_CHANGE [dojip.kim@lge.com] 2010-12-31, [LGE_AP20] from Star
+#ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
+	.get_startoffset = tegra_sdhci_get_StartOffset,
 #endif
+
+	.execute_freq_tuning = sdhci_tegra_execute_tuning,
 };
 
-static int __init sdhci_tegra_init(void)
-{
-	return platform_driver_register(&sdhci_tegra_driver);
-}
-module_init(sdhci_tegra_init);
-
-static void __exit sdhci_tegra_exit(void)
-{
-	platform_driver_unregister(&sdhci_tegra_driver);
-}
-module_exit(sdhci_tegra_exit);
-
-MODULE_DESCRIPTION("SDHCI driver for Tegra");
-MODULE_AUTHOR(" Google, Inc.");
-MODULE_LICENSE("GPL v2");
+struct sdhci_pltfm_data sdhci_tegra_pdata = {
+	.quirks = SDHCI_QUIRK_BROKEN_TIMEOUT_VAL |
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+		  SDHCI_QUIRK_DATA_TIMEOUT_USES_SDCLK |
+#endif
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+		  SDHCI_QUIRK_NONSTANDARD_CLOCK |
+		  SDHCI_QUIRK_NON_STD_VOLTAGE_SWITCHING |
+		  SDHCI_QUIRK_NON_STANDARD_TUNING |
+#endif
+		  SDHCI_QUIRK_SINGLE_POWER_WRITE |
+		  SDHCI_QUIRK_NO_HISPD_BIT |
+		  SDHCI_QUIRK_BROKEN_ADMA_ZEROLEN_DESC |
+		  SDHCI_QUIRK_BROKEN_CARD_DETECTION,
+	.ops  = &tegra_sdhci_ops,
+	.init = tegra_sdhci_pltfm_init,
+	.exit = tegra_sdhci_pltfm_exit,
+};

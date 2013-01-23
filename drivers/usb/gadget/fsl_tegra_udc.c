@@ -9,7 +9,13 @@
  */
 #include <linux/fsl_devices.h>
 #include <linux/platform_device.h>
+<<<<<<< HEAD
 #include <linux/err.h>
+=======
+#include <linux/platform_data/tegra_usb.h>
+#include <linux/err.h>
+#include <linux/clk.h>
+>>>>>>> 04f2966... new changes
 #include <linux/io.h>
 #include <mach/usb_phy.h>
 
@@ -55,7 +61,11 @@ int fsl_udc_clk_init(struct platform_device *pdev)
 	clk_enable(emc_clk);
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	/* Set DDR busy hints to 150MHz. For Tegra 2x SOC, DDR rate is half of EMC rate */
+<<<<<<< HEAD
 	clk_set_rate(emc_clk, 300000000);
+=======
+	clk_set_rate(emc_clk, 150000000);
+>>>>>>> 04f2966... new changes
 #else
 	/* Set DDR busy hints to 100MHz. For Tegra 3x SOC DDR rate equals to EMC rate */
 	clk_set_rate(emc_clk, 100000000);
@@ -79,14 +89,22 @@ int fsl_udc_clk_init(struct platform_device *pdev)
 	if (instance == -1)
 		instance = 0;
 
+<<<<<<< HEAD
 	phy = tegra_usb_phy_open(instance, udc_base, pdata->phy_config,
 					TEGRA_USB_PHY_MODE_DEVICE, pdata->usb_phy_type);
+=======
+	phy = tegra_usb_phy_open(pdev);
+>>>>>>> 04f2966... new changes
 	if (IS_ERR(phy)) {
 		dev_err(&pdev->dev, "Can't open phy\n");
 		err = PTR_ERR(phy);
 		goto err1;
 	}
+<<<<<<< HEAD
 	tegra_usb_phy_power_on(phy, true);
+=======
+	tegra_usb_phy_power_on(phy);
+>>>>>>> 04f2966... new changes
 
 	return 0;
 err1:
@@ -103,6 +121,22 @@ err_sclk:
 	return err;
 }
 
+<<<<<<< HEAD
+=======
+void fsl_udc_lock_sclk(uint rate)
+{
+	printk(KERN_DEBUG "sclk rate lock %d\n", rate);
+	clk_set_rate(sclk_clk, rate);
+	clk_enable(sclk_clk);
+}
+
+void fsl_udc_unlock_sclk(void)
+{
+	printk(KERN_DEBUG "sclk rate unlock 80Mhz\n");
+	clk_disable(sclk_clk);
+}
+
+>>>>>>> 04f2966... new changes
 void fsl_udc_clk_finalize(struct platform_device *pdev)
 {
 }
@@ -125,7 +159,11 @@ void fsl_udc_clk_release(void)
 
 void fsl_udc_clk_suspend(bool is_dpd)
 {
+<<<<<<< HEAD
 	tegra_usb_phy_power_off(phy, is_dpd);
+=======
+	tegra_usb_phy_power_off(phy);
+>>>>>>> 04f2966... new changes
 	clk_disable(udc_clk);
 	clk_disable(sclk_clk);
 	clk_disable(emc_clk);
@@ -136,7 +174,11 @@ void fsl_udc_clk_resume(bool is_dpd)
 	clk_enable(emc_clk);
 	clk_enable(sclk_clk);
 	clk_enable(udc_clk);
+<<<<<<< HEAD
 	tegra_usb_phy_power_on(phy,  is_dpd);
+=======
+	tegra_usb_phy_power_on(phy);
+>>>>>>> 04f2966... new changes
 }
 
 void fsl_udc_clk_enable(void)
@@ -151,5 +193,26 @@ void fsl_udc_clk_disable(void)
 
 bool fsl_udc_charger_detect(void)
 {
+<<<<<<< HEAD
 	return tegra_usb_phy_charger_detect(phy);
 }
+=======
+	return tegra_usb_phy_charger_detected(phy);
+}
+
+void fsl_udc_dtd_prepare(void)
+{
+	/* When we are programming two DTDs very close to each other,
+	 * the second DTD is being prefetched before it is actually written
+	 * to DDR. To prevent this, we disable prefetcher before programming
+	 * any new DTD and re-enable it before priming endpoint.
+	 */
+	tegra_usb_phy_memory_prefetch_off(phy);
+}
+
+void fsl_udc_ep_barrier(void)
+{
+	tegra_usb_phy_memory_prefetch_on(phy);
+}
+
+>>>>>>> 04f2966... new changes

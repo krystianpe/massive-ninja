@@ -55,6 +55,12 @@ struct tegra_otg_data {
 	unsigned int intr_reg_data;
 	bool detect_vbus;
 	bool clk_enabled;
+<<<<<<< HEAD
+=======
+	bool interrupt_mode;
+	bool builtin_host;
+	bool suspended;
+>>>>>>> 04f2966... new changes
 };
 static struct tegra_otg_data *tegra_clone;
 
@@ -321,6 +327,46 @@ static int tegra_otg_set_suspend(struct otg_transceiver *otg, int suspend)
 	return 0;
 }
 
+<<<<<<< HEAD
+=======
+static ssize_t show_host_en(struct device *dev, struct device_attribute *attr,
+				char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct tegra_otg_data *tegra = platform_get_drvdata(pdev);
+
+	*buf = tegra->interrupt_mode ? '0': '1';
+	strcat(buf, "\n");
+	return strlen(buf);
+}
+
+static ssize_t store_host_en(struct device *dev, struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct tegra_otg_data *tegra = platform_get_drvdata(pdev);
+	unsigned long host;
+
+	if (sscanf(buf, "%lu", &host) != 1 || host < 0 || host > 1)
+		return -EINVAL;
+
+	if (host) {
+		enable_interrupt(tegra, false);
+		tegra_change_otg_state(tegra, OTG_STATE_A_SUSPEND);
+		tegra_change_otg_state(tegra, OTG_STATE_A_HOST);
+		tegra->interrupt_mode = false;
+	} else {
+		tegra->interrupt_mode = true;
+		tegra_change_otg_state(tegra, OTG_STATE_A_SUSPEND);
+		enable_interrupt(tegra, true);
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR(enable_host, 0644, show_host_en, store_host_en);
+
+>>>>>>> 04f2966... new changes
 static int tegra_otg_probe(struct platform_device *pdev)
 {
 	struct tegra_otg_data *tegra;

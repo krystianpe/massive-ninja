@@ -58,3 +58,13 @@ obj-$(CONFIG_INV_SENSORS)      += inv_mpu/
 obj-$(CONFIG_TEGRA_CRYPTO_DEV)	+= tegra-cryptodev.o
 obj-$(CONFIG_TEGRA_BB_SUPPORT)	+= tegra-baseband/
 obj-$(CONFIG_MAX1749_VIBRATOR)	+= max1749.o
+<<<<<<< HEAD
+=======
+obj-$(CONFIG_THERM_EST)		+= therm_est.o
+obj-$(CONFIG_MOT_FEAT_TS27010MUX)	+= ts27010mux/
+obj-$(CONFIG_SENSORS_KXTF9)	+= kxtf9.o
+obj-$(CONFIG_VIB_GPIO)		+= vib-gpio.o
+obj-$(CONFIG_MDM_CTRL)		+= mdm_ctrl.o
+obj-y                           += radio_ctrl/
+obj-$(CONFIG_TTY_SPI_SLAVE_MDM6600)   += spi-tty/
+>>>>>>> 04f2966... new changes
