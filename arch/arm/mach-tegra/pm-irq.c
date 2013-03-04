@@ -173,12 +173,12 @@ int tegra_pm_irq_set_wake(int irq, int enable)
 =======
 		tegra_lp0_wake_enb |= (wake_msk.wake_mask_hi |
 			wake_msk.wake_mask_lo | wake_msk.wake_mask_any);
-		printk("%s: Enabling wake %d\n", __func__, err);
+		printk("%s: Enabling wake (irq=%d)\n", __func__, irq);
 	
 	} else {
 		tegra_lp0_wake_enb &= ~(wake_msk.wake_mask_hi |
 			wake_msk.wake_mask_lo | wake_msk.wake_mask_any);
-		printk("%s: Disabling wake %d\n", __func__, err);
+		printk("%s: Disabling wake (irq=%d)\n", __func__, irq);
 	}
 >>>>>>> e0e91a5... cpcap debuging
 	return 0;
