@@ -360,7 +360,7 @@ static int tegra_pcm_new(struct snd_soc_pcm_runtime *rtd)
 		if (ret)
 			goto err;
 	}
-
+	if (1==0)
 	if (dai->driver->capture.channels_min) {
 		ret = tegra_pcm_preallocate_dma_buffer(pcm,
 						SNDRV_PCM_STREAM_CAPTURE);
