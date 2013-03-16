@@ -1095,6 +1095,7 @@ static void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 				 */
 				clk = SDHCI_PROG_CLOCK_MODE;
 				div--;
+<<<<<<< HEAD
 			}
 		} else {
 			/* Version 3.00 divisors must be a multiple of 2. */
@@ -1107,6 +1108,20 @@ static void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 						break;
 				}
 			}
+=======
+			}
+		} else {
+			/* Version 3.00 divisors must be a multiple of 2. */
+			if (host->max_clk <= clock)
+				div = 1;
+			else {
+				for (div = 2; div < SDHCI_MAX_DIV_SPEC_300;
+				     div += 2) {
+					if ((host->max_clk / div) <= clock)
+						break;
+				}
+			}
+>>>>>>> 3dc881b... code sync, no visible changes yet
 			div >>= 1;
 		}
 	} else {
@@ -1240,6 +1255,7 @@ static void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 
 	/* If polling, assume that the card is always present. */
 <<<<<<< HEAD
+<<<<<<< HEAD
 	if (host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION)
 <<<<<<< HEAD
 		present = true;
@@ -1247,6 +1263,14 @@ static void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 			present = true;
 >>>>>>> 04f2966... new changes
 	else
+=======
+	if (host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION) {
+		if (host->ops->get_cd)
+			present = host->ops->get_cd(host);
+		else
+			present = true;
+	} else {
+>>>>>>> 3dc881b... code sync, no visible changes yet
 =======
 	if (host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION) {
 		if (host->ops->get_cd)
@@ -1835,6 +1859,9 @@ out:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 3dc881b... code sync, no visible changes yet
 =======
 >>>>>>> 3dc881b... code sync, no visible changes yet
 static void sdhci_enable_preset_value(struct mmc_host *mmc, bool enable)
@@ -1883,6 +1910,7 @@ int sdhci_enable(struct mmc_host *mmc)
 	struct sdhci_host *host = mmc_priv(mmc);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	if (!mmc->card || mmc->card->type == MMC_TYPE_SDIO)
 		return 0;
 
@@ -1891,6 +1919,8 @@ int sdhci_enable(struct mmc_host *mmc)
 			host->ops->set_clock(host, mmc->ios.clock);
 		sdhci_set_clock(host, mmc->ios.clock);
 =======
+=======
+>>>>>>> 3dc881b... code sync, no visible changes yet
 	if (!mmc->card)
 		return 0;
 
@@ -1903,6 +1933,9 @@ int sdhci_enable(struct mmc_host *mmc)
 			if (host->ops->set_card_clock)
 				host->ops->set_card_clock(host, mmc->ios.clock);
 		}
+<<<<<<< HEAD
+>>>>>>> 3dc881b... code sync, no visible changes yet
+=======
 >>>>>>> 3dc881b... code sync, no visible changes yet
 	}
 
@@ -1914,6 +1947,7 @@ int sdhci_disable(struct mmc_host *mmc, int lazy)
 	struct sdhci_host *host = mmc_priv(mmc);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	if (!mmc->card || mmc->card->type == MMC_TYPE_SDIO)
 		return 0;
 
@@ -1921,6 +1955,8 @@ int sdhci_disable(struct mmc_host *mmc, int lazy)
 	if (host->ops->set_clock)
 		host->ops->set_clock(host, 0);
 =======
+=======
+>>>>>>> 3dc881b... code sync, no visible changes yet
 	if (!mmc->card)
 		return 0;
 
@@ -1933,14 +1969,20 @@ int sdhci_disable(struct mmc_host *mmc, int lazy)
 		if (host->ops->set_card_clock)
 			host->ops->set_card_clock(host, 0);
 	}
+<<<<<<< HEAD
+>>>>>>> 3dc881b... code sync, no visible changes yet
+=======
 >>>>>>> 3dc881b... code sync, no visible changes yet
 
 	return 0;
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 04f2966... new changes
+=======
+>>>>>>> 3dc881b... code sync, no visible changes yet
 =======
 >>>>>>> 3dc881b... code sync, no visible changes yet
 static const struct mmc_host_ops sdhci_ops = {
@@ -2396,14 +2438,20 @@ int sdhci_suspend_host(struct sdhci_host *host, pm_message_t state)
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 	/* Disable tuning since we are suspending */
 	if (host->version >= SDHCI_SPEC_300 && host->tuning_count &&
 	    host->tuning_mode == SDHCI_TUNING_MODE_1) {
 =======
+=======
+>>>>>>> 3dc881b... code sync, no visible changes yet
 	/* Disable tuning since we are suspending */
 	has_tuning_timer = host->version >= SDHCI_SPEC_300 &&
 		host->tuning_count && host->tuning_mode == SDHCI_TUNING_MODE_1;
 	if (has_tuning_timer) {
+<<<<<<< HEAD
+>>>>>>> 3dc881b... code sync, no visible changes yet
+=======
 >>>>>>> 3dc881b... code sync, no visible changes yet
 		host->flags &= ~SDHCI_NEEDS_RETUNING;
 		mod_timer(&host->tuning_timer, jiffies +
@@ -2411,8 +2459,24 @@ int sdhci_suspend_host(struct sdhci_host *host, pm_message_t state)
 	}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	if (mmc->card && (mmc->card->type != MMC_TYPE_SDIO))
+=======
+	if (mmc->card) {
+>>>>>>> 3dc881b... code sync, no visible changes yet
 		ret = mmc_suspend_host(host->mmc);
+		if (ret) {
+			if (has_tuning_timer) {
+				host->flags |= SDHCI_NEEDS_RETUNING;
+				mod_timer(&host->tuning_timer, jiffies +
+						host->tuning_count * HZ);
+			}
+
+			sdhci_enable_card_detection(host);
+
+			return ret;
+		}
+	}
 
 	if (host->flags & MMC_PM_KEEP_POWER)
 =======

@@ -150,6 +150,9 @@ struct mmc_test_card {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 3dc881b... code sync, no visible changes yet
 =======
 >>>>>>> 3dc881b... code sync, no visible changes yet
 enum mmc_test_prep_media {
@@ -174,9 +177,12 @@ struct mmc_test_async_req {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 04f2966... new changes
 =======
+=======
+>>>>>>> 3dc881b... code sync, no visible changes yet
 struct mmc_test_parameter {
 	const char *name;
 	long value;
@@ -267,6 +273,9 @@ static void mmc_test_set_parameters(struct mmc_test_card *test)
 	}
 }
 
+<<<<<<< HEAD
+>>>>>>> 3dc881b... code sync, no visible changes yet
+=======
 >>>>>>> 3dc881b... code sync, no visible changes yet
 /*******************************************************************/
 /*  General helper functions                                       */

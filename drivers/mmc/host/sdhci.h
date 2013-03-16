@@ -275,11 +275,14 @@ struct sdhci_ops {
 =======
 	unsigned int    (*get_cd)(struct sdhci_host *host);
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 	int		(*suspend)(struct sdhci_host *host, pm_message_t state);
 	int		(*resume)(struct sdhci_host *host);
 
 >>>>>>> 04f2966... new changes
+=======
+>>>>>>> 3dc881b... code sync, no visible changes yet
 =======
 >>>>>>> 3dc881b... code sync, no visible changes yet
 	void	(*platform_reset_enter)(struct sdhci_host *host, u8 mask);

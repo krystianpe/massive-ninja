@@ -61,6 +61,7 @@ MODULE_ALIAS("mmc:block");
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 #define MMC_CMD_RETRIES 	10
 
 static DEFINE_MUTEX(block_mutex);
@@ -68,6 +69,10 @@ static DEFINE_MUTEX(block_mutex);
 =======
 #define MMC_CMD_RETRIES 10
 >>>>>>> 04f2966... new changes
+=======
+static DEFINE_MUTEX(block_mutex);
+
+>>>>>>> 3dc881b... code sync, no visible changes yet
 =======
 static DEFINE_MUTEX(block_mutex);
 
@@ -919,6 +924,7 @@ static int mmc_blk_err_check(struct mmc_card *card,
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 	/*
 	 * Reliable writes are used to implement Forced Unit Access and
 	 * REQ_META accesses, and are supported only on MMCs.
@@ -948,6 +954,11 @@ static int mmc_blk_err_check(struct mmc_card *card,
 =======
 		mmc_set_data_timeout(&brq.data, card);
 >>>>>>> 04f2966... new changes
+=======
+	if (ret == MMC_BLK_SUCCESS &&
+	    blk_rq_bytes(req) != brq->data.bytes_xfered)
+		ret = MMC_BLK_PARTIAL;
+>>>>>>> 3dc881b... code sync, no visible changes yet
 =======
 	if (ret == MMC_BLK_SUCCESS &&
 	    blk_rq_bytes(req) != brq->data.bytes_xfered)

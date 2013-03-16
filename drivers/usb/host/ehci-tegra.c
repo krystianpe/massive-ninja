@@ -267,6 +267,9 @@ void tegra_ehci_enable_host (struct usb_hcd *hcd)
 }
 #endif
 
+<<<<<<< HEAD
+>>>>>>> 3dc881b... code sync, no visible changes yet
+=======
 >>>>>>> 3dc881b... code sync, no visible changes yet
 static int tegra_ehci_hub_control(
 	struct usb_hcd	*hcd,

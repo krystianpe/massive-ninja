@@ -1,8 +1,11 @@
 GCOV_PROFILE := y
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += ahb.o
 =======
+=======
+>>>>>>> 3dc881b... code sync, no visible changes yet
 #subdir-ccflags-y := -Werror
 
 obj-y                                   += ahb.o

@@ -115,8 +115,25 @@ struct tegra_sdhci_host {
 	bool is_rail_enabled;
 	struct clk *emc_clk;
 	unsigned int emc_max_clk;
+<<<<<<< HEAD
 };
 
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+static struct tegra_sdhci_hw_ops tegra_2x_sdhci_ops = {
+};
+#endif
+
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+static struct tegra_sdhci_hw_ops tegra_3x_sdhci_ops = {
+	.set_card_clock = tegra_3x_sdhci_set_card_clock,
+	.sdhost_init = tegra3_sdhci_post_reset_init,
+=======
+>>>>>>> 3dc881b... code sync, no visible changes yet
+};
+#endif
+
+<<<<<<< HEAD
+=======
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 static struct tegra_sdhci_hw_ops tegra_2x_sdhci_ops = {
 };
@@ -129,6 +146,7 @@ static struct tegra_sdhci_hw_ops tegra_3x_sdhci_ops = {
 };
 #endif
 
+>>>>>>> 3dc881b... code sync, no visible changes yet
 #ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
 static unsigned int tegra_sdhci_get_StartOffset(struct sdhci_host *host)
 {
@@ -858,6 +876,7 @@ out:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 static int tegra_sdhci_suspend(struct sdhci_host *sdhci, pm_message_t state)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
@@ -946,6 +965,9 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 static int tegra_sdhci_pltfm_init(struct sdhci_host *host,
 				  struct sdhci_pltfm_data *pdata)
 >>>>>>> 04f2966... new changes
+=======
+static int tegra_sdhci_suspend(struct sdhci_host *sdhci, pm_message_t state)
+>>>>>>> 3dc881b... code sync, no visible changes yet
 =======
 static int tegra_sdhci_suspend(struct sdhci_host *sdhci, pm_message_t state)
 >>>>>>> 3dc881b... code sync, no visible changes yet
@@ -1201,11 +1223,14 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 	if (rc != 0)
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 		goto err_clk_put;
 =======
 		goto err_clkput;
 >>>>>>> 04f2966... new changes
 =======
+=======
+>>>>>>> 3dc881b... code sync, no visible changes yet
 		goto err_clk_put;
 
 	if (!strcmp(dev_name(mmc_dev(host->mmc)), "sdhci-tegra.3")) {
@@ -1219,6 +1244,9 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 			clk_round_rate(tegra_host->emc_clk, ULONG_MAX);
 	}
 
+<<<<<<< HEAD
+>>>>>>> 3dc881b... code sync, no visible changes yet
+=======
 >>>>>>> 3dc881b... code sync, no visible changes yet
 	pltfm_host->clk = clk;
 	pltfm_host->priv = tegra_host;
@@ -1230,10 +1258,16 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 	host->mmc->pm_caps = plat->pm_flags;
 
 =======
 >>>>>>> 04f2966... new changes
+=======
+	host->mmc->pm_caps |= plat->pm_caps;
+	host->mmc->pm_flags |= plat->pm_flags;
+
+>>>>>>> 3dc881b... code sync, no visible changes yet
 =======
 	host->mmc->pm_caps |= plat->pm_caps;
 	host->mmc->pm_flags |= plat->pm_flags;
@@ -1252,6 +1286,7 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 		host->mmc->caps |= MMC_CAP_NONREMOVABLE;
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 		host->mmc->pm_flags |= MMC_PM_IGNORE_PM_NOTIFY;
 	}
 =======
@@ -1263,11 +1298,19 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 	}
 	host->mmc->pm_flags |= MMC_PM_IGNORE_PM_NOTIFY;
 
+=======
+	}
+	host->mmc->pm_flags |= MMC_PM_IGNORE_PM_NOTIFY;
+
+>>>>>>> 3dc881b... code sync, no visible changes yet
 #ifdef CONFIG_MMC_BKOPS
 	host->mmc->caps |= MMC_CAP_BKOPS;
 #endif
 
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
+<<<<<<< HEAD
+>>>>>>> 3dc881b... code sync, no visible changes yet
+=======
 >>>>>>> 3dc881b... code sync, no visible changes yet
 	/* Do not turn OFF embedded sdio cards as it support Wake on Wireless */
 	if (plat->mmc_data.embedded_sdio)
@@ -1289,6 +1332,7 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 err_add_host:
 	clk_disable(pltfm_host->clk);
 err_clk_put:
@@ -1303,12 +1347,19 @@ out_wp:
 =======
 	return 0;
 
+=======
+	return 0;
+
+>>>>>>> 3dc881b... code sync, no visible changes yet
 err_add_host:
 	clk_put(tegra_host->emc_clk);
 	clk_disable(pltfm_host->clk);
 err_clk_put:
 	clk_put(pltfm_host->clk);
 err_clk_get:
+<<<<<<< HEAD
+>>>>>>> 3dc881b... code sync, no visible changes yet
+=======
 >>>>>>> 3dc881b... code sync, no visible changes yet
 	if (gpio_is_valid(plat->wp_gpio)) {
 		tegra_gpio_disable(plat->wp_gpio);

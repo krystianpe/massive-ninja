@@ -203,6 +203,9 @@ static void mmc_wait_done(struct mmc_request *mrq)
 {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 3dc881b... code sync, no visible changes yet
 =======
 >>>>>>> 3dc881b... code sync, no visible changes yet
 	complete(&mrq->completion);
@@ -277,6 +280,11 @@ struct mmc_async_req *mmc_start_req(struct mmc_host *host,
 	int err = 0;
 	struct mmc_async_req *data = host->areq;
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+	struct mmc_card *card = host->card;
+	struct timeval before_time, after_time;
+>>>>>>> 3dc881b... code sync, no visible changes yet
 =======
 	struct mmc_card *card = host->card;
 	struct timeval before_time, after_time;
@@ -288,8 +296,11 @@ struct mmc_async_req *mmc_start_req(struct mmc_host *host,
 
 	if (host->areq) {
 <<<<<<< HEAD
+<<<<<<< HEAD
 		mmc_wait_for_req_done(host, host->areq->mrq);
 =======
+=======
+>>>>>>> 3dc881b... code sync, no visible changes yet
 		if (card->ext_csd.refresh &&
 			(host->areq->mrq->data->flags & MMC_DATA_WRITE))
 				do_gettimeofday(&before_time);
@@ -320,6 +331,9 @@ struct mmc_async_req *mmc_start_req(struct mmc_host *host,
 						after_time.tv_sec;
 			}
 		}
+<<<<<<< HEAD
+>>>>>>> 3dc881b... code sync, no visible changes yet
+=======
 >>>>>>> 3dc881b... code sync, no visible changes yet
 		err = host->areq->err_check(host->card, host->areq);
 		if (err) {
@@ -344,9 +358,12 @@ struct mmc_async_req *mmc_start_req(struct mmc_host *host,
 		*error = err;
 	return data;
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 	complete(mrq->done_data);
 >>>>>>> 04f2966... new changes
+=======
+>>>>>>> 3dc881b... code sync, no visible changes yet
 =======
 >>>>>>> 3dc881b... code sync, no visible changes yet
 }
