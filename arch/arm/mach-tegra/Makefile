@@ -1,6 +1,12 @@
 GCOV_PROFILE := y
 
+<<<<<<< HEAD
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += ahb.o
+=======
+#subdir-ccflags-y := -Werror
+
+obj-y                                   += ahb.o
+>>>>>>> 3dc881b... code sync, no visible changes yet
 obj-y                                   += apbio.o
 obj-y                                   += common.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += common-t2.o
@@ -118,11 +124,9 @@ obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-keypad.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-kbc.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-modem.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-i2c.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-wifi.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-sensors.o
 #obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-wlan.o
+obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-sensors.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-power.o
-#obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-usb.o
 #obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-bluetooth.o
 #obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-gps.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-memory.o
