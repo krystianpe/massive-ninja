@@ -1,6 +1,9 @@
 GCOV_PROFILE := y
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> 49217ef... further code sync, and some fixes
 #subdir-ccflags-y := -Werror
 EXTRA_CFLAGS += -Idrivers/video/tegra/host
 >>>>>>> 49217ef... further code sync, and some fixes

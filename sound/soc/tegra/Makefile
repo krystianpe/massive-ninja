@@ -1,7 +1,10 @@
 GCOV_PROFILE := y
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> 49217ef... further code sync, and some fixes
 #subdir-ccflags-y := -Werror
 
 >>>>>>> 49217ef... further code sync, and some fixes

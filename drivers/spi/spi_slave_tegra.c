@@ -1016,11 +1016,15 @@ static int spi_tegra_handle_transfer_completion(struct spi_tegra_data *tspi)
 		if (tspi->tx_status) {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 			tegra_dma_dequeue_req(tspi->tx_dma, &tspi->tx_dma_req);
 =======
 			cancel_dma(tspi->tx_dma, &tspi->tx_dma_req);
 //			tegra_dma_dequeue(tspi->tx_dma);
 >>>>>>> 06ca946... Initial commit (Krystianp)
+=======
+			tegra_dma_dequeue(tspi->tx_dma);
+>>>>>>> 49217ef... further code sync, and some fixes
 =======
 			tegra_dma_dequeue(tspi->tx_dma);
 >>>>>>> 49217ef... further code sync, and some fixes
@@ -1031,12 +1035,16 @@ static int spi_tegra_handle_transfer_completion(struct spi_tegra_data *tspi)
 			if (wait_status <= 0) {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 				tegra_dma_dequeue_req(tspi->tx_dma,
 							&tspi->tx_dma_req);
 =======
 				//tegra_dma_dequeue(tspi->tx_dma);
 				cancel_dma(tspi->tx_dma, &tspi->tx_dma_req);
 >>>>>>> 06ca946... Initial commit (Krystianp)
+=======
+				tegra_dma_dequeue(tspi->tx_dma);
+>>>>>>> 49217ef... further code sync, and some fixes
 =======
 				tegra_dma_dequeue(tspi->tx_dma);
 >>>>>>> 49217ef... further code sync, and some fixes
@@ -1051,11 +1059,15 @@ static int spi_tegra_handle_transfer_completion(struct spi_tegra_data *tspi)
 		if (tspi->rx_status) {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 			tegra_dma_dequeue_req(tspi->rx_dma, &tspi->rx_dma_req);
 =======
 			cancel_dma(tspi->rx_dma, &tspi->rx_dma_req);
 	//		tegra_dma_dequeue(tspi->rx_dma);
 >>>>>>> 06ca946... Initial commit (Krystianp)
+=======
+			tegra_dma_dequeue(tspi->rx_dma);
+>>>>>>> 49217ef... further code sync, and some fixes
 =======
 			tegra_dma_dequeue(tspi->rx_dma);
 >>>>>>> 49217ef... further code sync, and some fixes
@@ -1066,12 +1078,16 @@ static int spi_tegra_handle_transfer_completion(struct spi_tegra_data *tspi)
 			if (wait_status <= 0) {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 				tegra_dma_dequeue_req(tspi->rx_dma,
 						&tspi->rx_dma_req);
 =======
 				cancel_dma(tspi->rx_dma, &tspi->rx_dma_req);
 				//tegra_dma_dequeue(tspi->rx_dma);
 >>>>>>> 06ca946... Initial commit (Krystianp)
+=======
+				tegra_dma_dequeue(tspi->rx_dma);
+>>>>>>> 49217ef... further code sync, and some fixes
 =======
 				tegra_dma_dequeue(tspi->rx_dma);
 >>>>>>> 49217ef... further code sync, and some fixes

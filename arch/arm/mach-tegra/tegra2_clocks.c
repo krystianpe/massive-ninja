@@ -2379,6 +2379,7 @@ struct clk tegra_list_periph_clks[] = {
 	PERIPH_CLK("twc",	"twc",			NULL,	16,	0x12c,	0x31E,	150000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 	PERIPH_CLK("sbc1",	"spi_tegra.0",		NULL,	41,	0x134,	0x31E,	160000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc2",	"spi_tegra.1",		NULL,	44,	0x118,	0x31E,	160000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc3",	"spi_tegra.2",		NULL,	46,	0x11c,	0x31E,	160000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
@@ -2386,6 +2387,9 @@ struct clk tegra_list_periph_clks[] = {
 =======
 //	PERIPH_CLK("sbc1",	"spi_tegra.0",		"spi",	41,	0x134,	0x31E,	160000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc1",	"spi_slave_tegra.0",	"spi",	41,	0x134,	0x31E,	160000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+=======
+	PERIPH_CLK("sbc1",	"spi_tegra.0",		"spi",	41,	0x134,	0x31E,	160000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+>>>>>>> 49217ef... further code sync, and some fixes
 =======
 	PERIPH_CLK("sbc1",	"spi_tegra.0",		"spi",	41,	0x134,	0x31E,	160000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 >>>>>>> 49217ef... further code sync, and some fixes
@@ -2463,9 +2467,13 @@ struct clk tegra_list_shared_clks[] = {
 	SHARED_CLK("usb3.sclk",	"tegra-ehci.2",		"sclk",	&tegra_clk_virtual_sclk),
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 //	SHARED_CLK("sbc1.sclk",	"spi_tegra.0",		"sclk",	&tegra_clk_virtual_sclk),
 	SHARED_CLK("sbc1.sclk",	"spi_slave_tegra.0",	"sclk",	&tegra_clk_virtual_sclk),
+=======
+	SHARED_CLK("sbc1.sclk",	"spi_tegra.0",		"sclk",	&tegra_clk_virtual_sclk),
+>>>>>>> 49217ef... further code sync, and some fixes
 =======
 	SHARED_CLK("sbc1.sclk",	"spi_tegra.0",		"sclk",	&tegra_clk_virtual_sclk),
 >>>>>>> 49217ef... further code sync, and some fixes

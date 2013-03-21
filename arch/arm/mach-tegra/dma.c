@@ -166,9 +166,26 @@ void tegra_dma_stop(struct tegra_dma_channel *ch)
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 bool tegra_dma_is_stopped(struct tegra_dma_channel *ch)
 =======
 void tegra_dma_dequeue(struct tegra_dma_channel *ch)
+=======
+void tegra_dma_dequeue(struct tegra_dma_channel *ch)
+{
+	struct tegra_dma_req *req;
+
+	if (tegra_dma_is_empty(ch))
+		return;
+
+	req = list_entry(ch->list.next, typeof(*req), node);
+
+	tegra_dma_dequeue_req(ch, req);
+	return;
+}
+
+static void pause_dma(bool wait_for_burst_complete)
+>>>>>>> 49217ef... further code sync, and some fixes
 {
 	struct tegra_dma_req *req;
 
