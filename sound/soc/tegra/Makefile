@@ -1,5 +1,10 @@
 GCOV_PROFILE := y
 
+<<<<<<< HEAD
+=======
+#subdir-ccflags-y := -Werror
+
+>>>>>>> 49217ef... further code sync, and some fixes
 # Tegra platform Support
 snd-soc-tegra-pcm-objs := tegra_pcm.o
 snd-soc-tegra20-spdif-objs := tegra20_spdif.o
