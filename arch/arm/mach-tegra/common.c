@@ -901,19 +901,9 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 		tegra_carveout_size >> 20,
 		tegra_vpr_start,
 		tegra_vpr_size ?
-<<<<<<< HEAD
-			tegra_vpr_start + tegra_vpr_size - 1 : 0);
-
-#ifdef SUPPORT_SMMU_BASE_FOR_TEGRA3_A01
-	if (smmu_reserved)
-		pr_info("SMMU:                   %08lx - %08lx\n",
-			smmu_window->start, smmu_window->end);
-#endif
-=======
 			tegra_vpr_start + tegra_vpr_size - 1 : 0,
 		tegra_vpr_size >> 10,
 		tegra_grhost_aperture);
->>>>>>> 78228ba... some fixes, more memory, panel WIP
 }
 
 static struct resource ram_console_resources[] = {

@@ -595,12 +595,10 @@ source "drivers/misc/lis3lv02d/Kconfig"
 source "drivers/misc/carma/Kconfig"
 source "drivers/misc/inv_mpu/Kconfig"
 source "drivers/misc/tegra-baseband/Kconfig"
-<<<<<<< HEAD
-=======
 source "drivers/misc/tegra-cec/Kconfig"
 source "drivers/misc/ts27010mux/Kconfig"
 source "drivers/misc/spi-tty/Kconfig"
 source "drivers/misc/radio_ctrl/Kconfig"
->>>>>>> 04f2966... new changes
+source "drivers/misc/vni/Kconfig"
 
 endif # MISC_DEVICES
