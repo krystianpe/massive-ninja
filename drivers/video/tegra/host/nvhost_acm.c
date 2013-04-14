@@ -181,21 +181,11 @@ static void schedule_clockgating_locked(struct nvhost_device *dev)
 
 void nvhost_module_busy(struct nvhost_device *dev)
 {
-<<<<<<< HEAD
-	if (dev->busy)
-		dev->busy(dev);
-
-=======
 	struct nvhost_driver *drv = to_nvhost_driver(dev->dev.driver);
 
 	if (drv->busy)
 		drv->busy(dev);
-<<<<<<< HEAD
-	printk("%s:step 2\n", __func__);
->>>>>>> 04f2966... new changes
-=======
 
->>>>>>> e0e91a5... cpcap debuging
 	mutex_lock(&dev->lock);
 	cancel_delayed_work(&dev->powerstate_down);
 
@@ -390,6 +380,57 @@ int nvhost_module_init(struct nvhost_device *dev)
 		do_unpowergate_locked(dev->powergate_ids[0]);
 		do_unpowergate_locked(dev->powergate_ids[1]);
 		dev->powerstate = NVHOST_POWER_STATE_CLOCKGATED;
+	}
+
+	/* Init the power sysfs attributes for this device */
+	dev->power_attrib = kzalloc(sizeof(struct nvhost_device_power_attr),
+		GFP_KERNEL);
+	if (!dev->power_attrib) {
+		dev_err(&dev->dev, "Unable to allocate sysfs attributes\n");
+		return -ENOMEM;
+	}
+	dev->power_attrib->ndev = dev;
+
+	dev->power_kobj = kobject_create_and_add("acm", &dev->dev.kobj);
+	if (!dev->power_kobj) {
+		dev_err(&dev->dev, "Could not add dir 'power'\n");
+		err = -EIO;
+		goto fail_attrib_alloc;
+	}
+
+	attr = &dev->power_attrib->power_attr[NVHOST_POWER_SYSFS_ATTRIB_CLOCKGATE_DELAY];
+	sysfs_attr_init(&attr->attr);
+	attr->attr.name = "clockgate_delay";
+	attr->attr.mode = S_IWUSR | S_IRUGO;
+	attr->show = clockgate_delay_show;
+	attr->store = clockgate_delay_store;
+	if (sysfs_create_file(dev->power_kobj, &attr->attr)) {
+		dev_err(&dev->dev, "Could not create sysfs attribute clockgate_delay\n");
+		err = -EIO;
+		goto fail_clockdelay;
+	}
+
+	attr = &dev->power_attrib->power_attr[NVHOST_POWER_SYSFS_ATTRIB_POWERGATE_DELAY];
+	sysfs_attr_init(&attr->attr);
+	attr->attr.name = "powergate_delay";
+	attr->attr.mode = S_IWUSR | S_IRUGO;
+	attr->show = powergate_delay_show;
+	attr->store = powergate_delay_store;
+	if (sysfs_create_file(dev->power_kobj, &attr->attr)) {
+		dev_err(&dev->dev, "Could not create sysfs attribute powergate_delay\n");
+		err = -EIO;
+		goto fail_powergatedelay;
+	}
+
+	attr = &dev->power_attrib->power_attr[NVHOST_POWER_SYSFS_ATTRIB_REFCOUNT];
+	sysfs_attr_init(&attr->attr);
+	attr->attr.name = "refcount";
+	attr->attr.mode = S_IRUGO;
+	attr->show = refcount_show;
+	if (sysfs_create_file(dev->power_kobj, &attr->attr)) {
+		dev_err(&dev->dev, "Could not create sysfs attribute refcount\n");
+		err = -EIO;
+		goto fail_refcount;
 	}
 
 	return 0;
