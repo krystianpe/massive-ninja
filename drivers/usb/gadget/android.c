@@ -1245,16 +1245,16 @@ functions_show(struct device *pdev, struct device_attribute *attr, char *buf)
 	struct android_usb_function *f;
 	char *buff = buf;
 
-	mutex_lock(&dev->mutex);
+	printk("%s: start", __func__);
+//	mutex_lock(&dev->mutex);
 
 	list_for_each_entry(f, &dev->enabled_functions, enabled_list) {
-		printk("%s: func: %s", __func__, f->name);
 		buff += sprintf(buff, "%s,", f->name);
 	}
-	mutex_unlock(&dev->mutex);
 
 	if (buff != buf)
 		*(buff-1) = '\n';
+//	printk("%s: end", __func__);
 	return buff - buf;
 }
 
@@ -1385,7 +1385,7 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 
 		/* update values in composite driver's copy of device descriptor */
 		cdev->desc.idVendor = device_desc.idVendor;
-/*
+
 		functions_len = functions_show(pdev, NULL, get_buf);
 		end_char_addr = &get_buf[0] + functions_len - 1;
 		*end_char_addr = 0;
@@ -1394,8 +1394,8 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 		pid = android_usb_get_pid(get_buf);
 		printk(KERN_INFO "%s: pid 0x%x\n", __func__, pid);
 		cdev->desc.idProduct = pid ? pid : device_desc.idProduct;
-*/
-		cdev->desc.idProduct = device_desc.idProduct;
+
+//		cdev->desc.idProduct = device_desc.idProduct;
 
 		cdev->desc.bcdDevice = device_desc.bcdDevice;
 		cdev->desc.bDeviceClass = device_desc.bDeviceClass;
