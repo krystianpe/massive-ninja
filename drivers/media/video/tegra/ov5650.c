@@ -1248,10 +1248,16 @@ static int set_power_helper(struct ov5650_platform_data *pdata,
 				int powerLevel)
 {
 	if (pdata) {
-		if (powerLevel && pdata->power_on)
-			pdata->power_on();
-		else if (pdata->power_off)
-			pdata->power_off();
+		if (powerLevel && pdata->power_on) {
+			if (*ref_cnt == 0)
+				pdata->power_on(pdata->power_id);
+			*ref_cnt = *ref_cnt + 1;
+		}
+		else if (pdata->power_off) {
+			*ref_cnt = *ref_cnt - 1;
+			if (*ref_cnt <= 0)
+				pdata->power_off(pdata->power_id);
+		}
 	}
 	return 0;
 }
@@ -1261,8 +1267,20 @@ static int ov5650_set_power(int powerLevel)
 	pr_info("%s: powerLevel=%d camera mode=%d\n", __func__, powerLevel,
 			stereo_ov5650_info->camera_mode);
 
-	if (StereoCameraMode_Left & stereo_ov5650_info->camera_mode)
-		set_power_helper(stereo_ov5650_info->left.pdata, powerLevel);
+// for Olympus
+	if (Main & stereo_ov5650_info->camera_mode) {
+		mutex_lock(&info->mutex_le);
+		set_power_helper(stereo_ov5650_info->left.pdata, powerLevel,
+				&info->power_refcnt_le);
+		mutex_unlock(&info->mutex_le);
+	}
+
+	if (StereoCameraMode_Left & info->camera_mode) {
+		mutex_lock(&info->mutex_le);
+		set_power_helper(info->left.pdata, powerLevel,
+			&info->power_refcnt_le);
+		mutex_unlock(&info->mutex_le);
+	}
 
 	if (StereoCameraMode_Right & stereo_ov5650_info->camera_mode)
 		set_power_helper(stereo_ov5650_info->right.pdata, powerLevel);
@@ -1276,9 +1294,11 @@ static long ov5650_ioctl(struct file *file,
 	int err;
 	struct ov5650_info *info = file->private_data;
 
+	printk (KERN_INFO "%s: cmd = 0x%8x", __func__,  cmd);
 	switch (cmd) {
 	case OV5650_IOCTL_SET_CAMERA_MODE:
 	{
+		printk (KERN_INFO "%s: doing OV5650_IOCTL_SET_CAMERA_MODE", __func__);
 		if (info->camera_mode != arg) {
 			err = ov5650_set_power(0);
 			if (err) {
@@ -1293,12 +1313,16 @@ static long ov5650_ioctl(struct file *file,
 		return 0;
 	}
 	case OV5650_IOCTL_SYNC_SENSORS:
+	{
+		printk (KERN_INFO "%s: doing OV5650_IOCTL_SYNC_SENSORS", __func__);
 		if (info->right.pdata->synchronize_sensors)
 			info->right.pdata->synchronize_sensors();
 		return 0;
+	}
 	case OV5650_IOCTL_SET_MODE:
 	{
 		struct ov5650_mode mode;
+		printk (KERN_INFO "%s: doing OV5650_IOCTL_SET_MODE", __func__);
 		if (copy_from_user(&mode,
 				   (const void __user *)arg,
 				   sizeof(struct ov5650_mode))) {
@@ -1309,16 +1333,29 @@ static long ov5650_ioctl(struct file *file,
 		return ov5650_set_mode(info, &mode);
 	}
 	case OV5650_IOCTL_SET_FRAME_LENGTH:
+	{
+		printk (KERN_INFO "%s: doing OV5650_IOCTL_SET_FRAME_LENGTH", __func__);
 		return ov5650_set_frame_length(info, (u32)arg);
+	}
 	case OV5650_IOCTL_SET_COARSE_TIME:
+	{
+		printk (KERN_INFO "%s: doing OV5650_IOCTL_SET_COARSE_TIME", __func__);
 		return ov5650_set_coarse_time(info, (u32)arg);
+	}
 	case OV5650_IOCTL_SET_GAIN:
+	{
+		printk (KERN_INFO "%s: doing OV5650_IOCTL_SET_GAIN", __func__);
 		return ov5650_set_gain(info, (u16)arg);
+	}
 	case OV5650_IOCTL_SET_BINNING:
+	{
+		printk (KERN_INFO "%s: doing OV5650_IOCTL_SET_BINNING", __func__);
 		return ov5650_set_binning(info, (u8)arg);
+	}
 	case OV5650_IOCTL_GET_STATUS:
 	{
 		u16 status = 0;
+		printk (KERN_INFO "%s: doing OV5650_IOCTL_GET_STATUS", __func__);
 		if (copy_to_user((void __user *)arg, &status,
 				 2)) {
 			pr_info("%s %d\n", __func__, __LINE__);
@@ -1328,6 +1365,7 @@ static long ov5650_ioctl(struct file *file,
 	}
 	case OV5650_IOCTL_TEST_PATTERN:
 	{
+		printk (KERN_INFO "%s: doing OV5650_IOCTL_TEST_PATTERN", __func__);
 		err = ov5650_test_pattern(info, (enum ov5650_test_pattern) arg);
 		if (err)
 			pr_err("%s %d %d\n", __func__, __LINE__, err);
@@ -1336,6 +1374,7 @@ static long ov5650_ioctl(struct file *file,
 	case OV5650_IOCTL_SET_GROUP_HOLD:
 	{
 		struct ov5650_ae ae;
+		printk (KERN_INFO "%s: doing OV5650_IOCTL_SET_GROUP_HOLD", __func__);
 		if (copy_from_user(&ae,
 				(const void __user *)arg,
 				sizeof(struct ov5650_ae))) {
@@ -1344,8 +1383,26 @@ static long ov5650_ioctl(struct file *file,
 		}
 		return ov5650_set_group_hold(info, &ae);
 	}
-	default:
+	case OV5650_IOCTL_GET_SENSORDATA:
+	{
+		printk (KERN_INFO "%s: doing OV5650_IOCTL_GET_SENSORDATA", __func__);
+		err = ov5650_get_sensor_id(info);
+		if (err) {
+			pr_err("%s %d %d\n", __func__, __LINE__, err);
+			return err;
+		}
+		if (copy_to_user((void __user *)arg,
+				&info->sensor_data,
+				sizeof(struct ov5650_sensordata))) {
+			pr_info("%s %d\n", __func__, __LINE__);
+			return -EFAULT;
+		}
+		return 0;
+	}
+	default:{
+		printk (KERN_INFO "%s: bad command", __func__);
 		return -EINVAL;
+	}
 	}
 	return 0;
 }
