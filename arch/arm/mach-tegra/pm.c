@@ -839,7 +839,8 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 		err = -ENXIO;
 		goto fail;
 	}
-
+/* Moving checking to the earlier stage */
+#ifndef CONFIG_MACH_OLYMPUS
 	if (tegra_is_voice_call_active()) {
 		u32 reg;
 
@@ -851,6 +852,7 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 		pmc_32kwritel(reg, PMC_SCRATCH37);
 		mode = TEGRA_SUSPEND_LP1;
 	}
+#endif
 
 	if ((mode == TEGRA_SUSPEND_LP0) && !tegra_pm_irq_lp0_allowed()) {
 		pr_info("LP0 not used due to unsupported wakeup events\n");
@@ -1016,6 +1018,12 @@ static struct kobject *suspend_kobj;
 
 static int tegra_pm_enter_suspend(void)
 {
+	/* Change of suspend mode to LP1 during calls */
+#ifdef CONFIG_MACH_OLYMPUS
+	if (tegra_is_voice_call_active())
+		current_suspend_mode = TEGRA_SUSPEND_LP1;
+#endif
+
 	pr_info("Entering suspend state %s\n", lp_state[current_suspend_mode]);
 	if (current_suspend_mode == TEGRA_SUSPEND_LP0)
 		tegra_lp0_cpu_mode(true);
