@@ -133,6 +133,12 @@ tegra_invalidate_l1:
 	isb
 	mov	pc, lr
 
+	/* Enable Coresight access on cpu */
+tegra_enable_coresite:
+      mov32   r0, 0xC5ACCE55
+      mcr     p14, 0, r0, c7, c12, 6
+      mov     pc, lr
+
 /*
  * __tegra_cpu_reset_handler_halt_failed:
  *
@@ -165,6 +171,8 @@ ENTRY(__tegra_cpu_reset_handler_start)
 ENTRY(__tegra_cpu_reset_handler)
 
 #if DEBUG_CPU_RESET_HANDLER
+	mov32   r0, 0xC5ACCE55
+        mcr     p14, 0, r0, c7, c12, 6          @ Enable CoreSight access
 	b	.
 #endif
 #ifndef CONFIG_TRUSTED_FOUNDATIONS
