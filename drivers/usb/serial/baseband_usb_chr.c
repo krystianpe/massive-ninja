@@ -3,7 +3,13 @@
  *
  * USB character driver to communicate with baseband modems.
  *
+<<<<<<< HEAD
  * Copyright (c) 2011, NVIDIA Corporation.
+=======
+ * Copyright (c) 2012, NVIDIA Corporation.  All rights reserved.
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
+>>>>>>> 639b75c... copyright statements
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

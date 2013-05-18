@@ -1,8 +1,15 @@
 /*
  * EHCI-compliant USB host controller driver for NVIDIA Tegra SoCs
  *
+<<<<<<< HEAD
  * Copyright (C) 2010 Google, Inc.
  * Copyright (C) 2009 - 2011 NVIDIA Corporation
+=======
+ * Copyright (c) 2010 Google, Inc.
+ * Copyright (c) 2009-2012 NVIDIA CORPORATION. All rights reserved.
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
+>>>>>>> 639b75c... copyright statements
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
