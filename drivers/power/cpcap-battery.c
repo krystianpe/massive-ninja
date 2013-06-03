@@ -448,6 +448,8 @@ static int cpcap_batt_get_property(struct power_supply *psy,
 
 	return ret;
 }
+struct attribute	attr;
+
 #ifdef CONFIG_MOT_CHARGING_DIS
 #define CPCAP_BATTERY_ATTR(_name)					\
 {									\
