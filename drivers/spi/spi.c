@@ -2,8 +2,6 @@
  * SPI init/core code
  *
  * Copyright (C) 2005 David Brownell
- * Copyright 2013: Olympus Kernel Project
- * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -745,7 +743,7 @@ int spi_setup(struct spi_device *spi)
 
 	status = spi->master->setup(spi);
 
-	dev_info(&spi->dev, "setup mode %d, %s%s%s%s"
+	dev_dbg(&spi->dev, "setup mode %d, %s%s%s%s"
 				"%u bits/w, %u Hz max --> %d\n",
 			(int) (spi->mode & (SPI_CPOL | SPI_CPHA)),
 			(spi->mode & SPI_CS_HIGH) ? "cs_high, " : "",
@@ -1141,4 +1139,3 @@ err0:
  * include needing to have boardinfo data structures be much more public.
  */
 postcore_initcall(spi_init);
-
