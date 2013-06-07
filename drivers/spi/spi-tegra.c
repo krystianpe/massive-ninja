@@ -2,12 +2,9 @@
  * Driver for Nvidia TEGRA spi controller.
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright 2013: Olympus Kernel Project
- * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * Author:
  *     Erik Gilling <konkers@android.com>
- *     Olympus Kernel Project
  *
  * Copyright (C) 2010-2011 NVIDIA Corporation
  *
@@ -172,7 +169,7 @@ static const unsigned long spi_tegra_req_sels[] = {
 	RX_FIFO_FULL_COUNT_ZERO << 16)
 
 #define MAX_CHIP_SELECT		4
-#define SLINK_FIFO_DEPTH	4
+#define SLINK_FIFO_DEPTH	32
 
 struct spi_tegra_data {
 	struct spi_master	*master;
@@ -252,15 +249,24 @@ struct spi_tegra_data {
 static inline unsigned long spi_tegra_readl(struct spi_tegra_data *tspi,
 		    unsigned long reg)
 {
-	if (!tspi->clk_state)
+	unsigned long flags;
+	unsigned long val;
+
+	spin_lock_irqsave(&tspi->reg_lock, flags);
+	if (tspi->clk_state < 1)
 		BUG();
-	return readl(tspi->base + reg);
+	val = readl(tspi->base + reg);
+	spin_unlock_irqrestore(&tspi->reg_lock, flags);
+	return val;
 }
 
 static inline void spi_tegra_writel(struct spi_tegra_data *tspi,
 		    unsigned long val, unsigned long reg)
 {
-	if (!tspi->clk_state)
+	unsigned long flags;
+
+	spin_lock_irqsave(&tspi->reg_lock, flags);
+	if (tspi->clk_state < 1)
 		BUG();
 	writel(val, tspi->base + reg);
 }
@@ -547,8 +553,8 @@ static int spi_tegra_start_dma_based_transfer(
 		tspi->tx_dma_req.size = len;
 		ret = tegra_dma_enqueue_req(tspi->tx_dma, &tspi->tx_dma_req);
 		if (ret < 0) {
-			dev_err(&tspi->pdev->dev, "Error in starting tx dma "
-						" error = %d\n", ret);
+			dev_err(&tspi->pdev->dev,
+				"Error in starting tx dma error = %d\n", ret);
 			return ret;
 		}
 
@@ -568,8 +574,7 @@ static int spi_tegra_start_dma_based_transfer(
 			dev_err(&tspi->pdev->dev, "Error in starting rx dma "
 						" error = %d\n", ret);
 			if (tspi->cur_direction & DATA_DIR_TX)
-				tegra_dma_dequeue_req(tspi->tx_dma,
-							&tspi->tx_dma_req);
+				cancel_dma(tspi->tx_dma, &tspi->tx_dma_req);
 			return ret;
 		}
 	}
@@ -815,10 +820,8 @@ static int spi_tegra_setup(struct spi_device *spi)
 	unsigned long val;
 	unsigned long flags;
 
-	
-	dev_info(&spi->dev, "setup %d bpw, %scs_high, %scpol, %scpha, %dHz\n",
+	dev_dbg(&spi->dev, "setup %d bpw, %scpol, %scpha, %dHz\n",
 		spi->bits_per_word,
-		(spi->mode & SPI_CS_HIGH) ? "" : "~",
 		spi->mode & SPI_CPOL ? "" : "~",
 		spi->mode & SPI_CPHA ? "" : "~",
 		spi->max_speed_hz);
@@ -845,13 +848,18 @@ static int spi_tegra_setup(struct spi_device *spi)
 		return -EINVAL;
 	}
 
+	pm_runtime_get_sync(&tspi->pdev->dev);
+	tegra_spi_clk_enable(tspi);
+
 	spin_lock_irqsave(&tspi->lock, flags);
 	val = tspi->def_command_reg;
 	if (spi->mode & SPI_CS_HIGH)
 		val |= cs_bit;
 	else
 		val &= ~cs_bit;
-	tspi->def_command_reg |= val;
+	tspi->def_command_reg = val;
+	spi_tegra_writel(tspi, tspi->def_command_reg, SLINK_COMMAND);
+	spin_unlock_irqrestore(&tspi->lock, flags);
 
 	if (!tspi->is_clkon_always && !tspi->clk_state) {
 		spin_unlock_irqrestore(&tspi->lock, flags);
@@ -1053,6 +1061,9 @@ static void handle_cpu_based_xfer(void *context_data)
 				(tspi->status_reg & SLINK_BSY)) {
 		dev_err(&tspi->pdev->dev, "%s ERROR bit set 0x%x\n",
 					 __func__, tspi->status_reg);
+		dev_err(&tspi->pdev->dev, "%s 0x%08x:0x%08x:0x%08x\n",
+				__func__, tspi->command_reg, tspi->command2_reg,
+				tspi->dma_control_reg);
 		tegra_periph_reset_assert(tspi->clk);
 		udelay(2);
 		tegra_periph_reset_deassert(tspi->clk);
@@ -1112,10 +1123,9 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 			wait_status = wait_for_completion_interruptible_timeout(
 				&tspi->tx_dma_complete, SLINK_DMA_TIMEOUT);
 			if (wait_status <= 0) {
-				tegra_dma_dequeue_req(tspi->tx_dma,
-								&tspi->tx_dma_req);
-				dev_err(&tspi->pdev->dev, "Error in Dma Tx "
-							"transfer\n");
+				cancel_dma(tspi->tx_dma, &tspi->tx_dma_req);
+				dev_err(&tspi->pdev->dev,
+					"Error in Dma Tx transfer\n");
 				err += 1;
 			}
 		}
@@ -1129,10 +1139,9 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 			wait_status = wait_for_completion_interruptible_timeout(
 				&tspi->rx_dma_complete, SLINK_DMA_TIMEOUT);
 			if (wait_status <= 0) {
-				tegra_dma_dequeue_req(tspi->rx_dma,
-							&tspi->rx_dma_req);
-				dev_err(&tspi->pdev->dev, "Error in Dma Rx "
-							"transfer\n");
+				cancel_dma(tspi->rx_dma, &tspi->rx_dma_req);
+				dev_err(&tspi->pdev->dev,
+					"Error in Dma Rx transfer\n");
 				err += 2;
 			}
 		}
@@ -1142,6 +1151,9 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 	if (err) {
 		dev_err(&tspi->pdev->dev, "%s ERROR bit set 0x%x\n",
 					 __func__, tspi->status_reg);
+		dev_err(&tspi->pdev->dev, "%s 0x%08x:0x%08x:0x%08x\n",
+				__func__, tspi->command_reg, tspi->command2_reg,
+				tspi->dma_control_reg);
 		tegra_periph_reset_assert(tspi->clk);
 		udelay(2);
 		tegra_periph_reset_deassert(tspi->clk);
@@ -1416,6 +1428,13 @@ skip_dma_alloc:
 	}
 
 	INIT_WORK(&tspi->spi_transfer_work, tegra_spi_transfer_work);
+
+	master->dev.of_node = pdev->dev.of_node;
+	ret = spi_register_master(master);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "can not register to master err %d\n", ret);
+		goto exit_destry_wq;
+	}
 
 	return ret;
 
