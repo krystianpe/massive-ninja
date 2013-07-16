@@ -67,7 +67,7 @@ static int force_policy_max_set(const char *arg, const struct kernel_param *kp)
 	bool old_policy = force_policy_max;
 
 	mutex_lock(&tegra_cpu_lock);
-
+	////printk(KERN_INFO "%s\n", __func__);
 	ret = param_set_bool(arg, kp);
 	if ((ret == 0) && (old_policy != force_policy_max))
 		tegra_cpu_set_speed_cap(NULL);
@@ -209,7 +209,7 @@ int tegra_edp_update_thermal_zone(int temperature)
 	int ret = 0;
 	int nlimits = cpu_edp_limits_size;
 	int index;
-
+	////printk(KERN_INFO "%s\n", __func__);
 	if (!cpu_edp_limits)
 		return -EINVAL;
 
@@ -250,7 +250,7 @@ int tegra_system_edp_alarm(bool alarm)
 
 	mutex_lock(&tegra_cpu_lock);
 	system_edp_alarm = alarm;
-
+	////printk(KERN_INFO "%s\n", __func__);
 	/* Update cpu rate if cpufreq (at least on cpu0) is already started
 	   and cancel emergency throttling after edp limit is applied */
 	if (target_cpu_speed[0]) {
@@ -304,7 +304,7 @@ static int tegra_cpu_edp_notify(
 	int ret = 0;
 	unsigned int cpu_speed, new_speed;
 	int cpu = (long)hcpu;
-
+	////printk(KERN_INFO "%s\n", __func__);
 	switch (event) {
 	case CPU_UP_PREPARE:
 		mutex_lock(&tegra_cpu_lock);
@@ -442,7 +442,7 @@ module_exit(tegra_cpu_debug_exit);
 #endif /* CONFIG_DEBUG_FS */
 
 int tegra_verify_speed(struct cpufreq_policy *policy)
-{
+{	////printk(KERN_INFO "%s\n", __func__);
 	return cpufreq_frequency_table_verify(policy, freq_table);
 }
 
@@ -457,13 +457,28 @@ unsigned int tegra_getspeed(unsigned int cpu)
 	return rate;
 }
 
+
+
+
+#define CPU1_ON_PENDING_MS  4500
+#define CPU1_OFF_PENDING_MS 1000
+#define HI_LIMIT 760000
+#define LO_LIMIT 456000
+
+extern u64 last_change_time(void);
+static bool up_state = true;
+
 static int tegra_update_cpu_speed(unsigned long rate)
 {
 	int ret = 0;
 	struct cpufreq_freqs freqs;
+	u64 now = jiffies;
+	u64 last_time = last_change_time();
 
 	freqs.old = tegra_getspeed(0);
 	freqs.new = rate;
+
+//	printk(KERN_INFO "%s: freq.old: %u, freq.new: %u\n", __func__, freqs.old, freqs.new);
 
 	rate = clk_round_rate(cpu_clk, rate * 1000);
 	if (!IS_ERR_VALUE(rate))
@@ -472,6 +487,32 @@ static int tegra_update_cpu_speed(unsigned long rate)
 	if (freqs.old == freqs.new)
 		return ret;
 
+//	printk(KERN_INFO "%s: now - last_time: %llu\n", __func__, now - last_time);
+
+	if ((now - last_time) < msecs_to_jiffies(CPU1_ON_PENDING_MS))
+		return -1;
+
+#if 0
+	printk(KERN_INFO "%s: freq: %u\n", __func__, freqs.new);
+
+	if ((freqs.old < freqs.new) && (freqs.new >= HI_LIMIT)) {
+		if (!cpu_online(1) && (up_state == false))
+			if ((now - last_change_time_lo) >= msecs_to_jiffies(CPU1_ON_PENDING_MS)) {
+				//cpu_up(1);
+				printk(KERN_INFO "%s: going up, now - last_change_time_hi = %llu, msecs_to_jiffies(CPU1_ON_PENDING_MS) = %lu\n", __func__, now - last_change_time_lo, msecs_to_jiffies(CPU1_ON_PENDING_MS));
+				up_state = true;
+			}
+		last_change_time_hi = now;
+	} else if ((freqs.old > freqs.new) && (freqs.new <= LO_LIMIT)) {
+		if (cpu_online(1) && (up_state == true))
+			if ((now - last_change_time_hi) >= msecs_to_jiffies(CPU1_OFF_PENDING_MS)) {
+				//cpu_down(1);
+				printk(KERN_INFO "%s: going down, now - last_change_time_hi = %llu, msecs_to_jiffies(CPU1_OFF_PENDING_MS) = %lu\n", __func__, now - last_change_time_hi, msecs_to_jiffies(CPU1_OFF_PENDING_MS));
+				up_state = false;
+			}
+		last_change_time_lo = now;
+	}
+#endif
 	/*
 	 * Vote on memory bus frequency based on cpu frequency
 	 * This sets the minimum frequency, display or avp may request higher
@@ -513,30 +554,7 @@ static int tegra_update_cpu_speed(unsigned long rate)
 		clk_set_rate(emc_clk, tegra_emc_to_cpu_ratio(freqs.new));
 		tegra_update_mselect_rate(freqs.new);
 	}
-#if 0
-	if (freqs.old > freqs.new) {
-		if (freqs.new<300000) {
-		//	mutex_lock(&early_mutex);
-			/* turn off 2nd cpu */
-			if (num_online_cpus() > 1) {
-				pr_info("%s: cpu frequency %d kHz, turning off second core\n",
-									__func__, freqs.new);
-				cpu_down(1);
-			}
-//			mutex_unlock(&early_mutex);
-		}
 
-	} else if (freqs.new>800000) {
-//		mutex_lock(&early_mutex);
-		/* turn on 2nd cpu */
-		if (num_online_cpus() < 2) {
-			pr_info("%s: cpu frequency %d kHz, turning on second core\n",
-							__func__, freqs.new);
-			cpu_up(1);
-		}
-//		mutex_unlock(&early_mutex);
-	}
-#endif
 	return 0;
 }
 
@@ -544,7 +562,7 @@ unsigned int tegra_count_slow_cpus(unsigned long speed_limit)
 {
 	unsigned int cnt = 0;
 	int i;
-
+	////printk(KERN_INFO "%s\n", __func__);
 	for_each_online_cpu(i)
 		if (target_cpu_speed[i] <= speed_limit)
 			cnt++;
@@ -555,7 +573,7 @@ unsigned int tegra_get_slowest_cpu_n(void) {
 	unsigned int cpu = nr_cpu_ids;
 	unsigned long rate = ULONG_MAX;
 	int i;
-
+	////printk(KERN_INFO "%s\n", __func__);
 	for_each_online_cpu(i)
 		if ((i > 0) && (rate > target_cpu_speed[i])) {
 			cpu = i;
@@ -567,7 +585,7 @@ unsigned int tegra_get_slowest_cpu_n(void) {
 unsigned long tegra_cpu_lowest_speed(void) {
 	unsigned long rate = ULONG_MAX;
 	int i;
-
+	////printk(KERN_INFO "%s\n", __func__);
 	for_each_online_cpu(i)
 		rate = min(rate, target_cpu_speed[i]);
 	return rate;
@@ -577,7 +595,7 @@ unsigned long tegra_cpu_highest_speed(void) {
 	unsigned long policy_max = ULONG_MAX;
 	unsigned long rate = 0;
 	int i;
-
+	////printk(KERN_INFO "%s\n", __func__);
 	for_each_online_cpu(i) {
 		if (force_policy_max)
 			policy_max = min(policy_max, policy_max_speed[i]);
@@ -591,7 +609,7 @@ int tegra_cpu_set_speed_cap(unsigned int *speed_cap)
 {
 	int ret = 0;
 	unsigned int new_speed = tegra_cpu_highest_speed();
-
+	////printk(KERN_INFO "%s\n", __func__);
 	if (is_suspended)
 		return -EBUSY;
 
@@ -617,7 +635,7 @@ static int tegra_target(struct cpufreq_policy *policy,
 	int ret = 0;
 
 	mutex_lock(&tegra_cpu_lock);
-
+	////printk(KERN_INFO "%s\n", __func__);
 	ret = cpufreq_frequency_table_target(policy, freq_table, target_freq,
 		relation, &idx);
 	if (ret)
@@ -638,6 +656,7 @@ static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 	void *dummy)
 {
 	mutex_lock(&tegra_cpu_lock);
+	////printk(KERN_INFO "%s\n", __func__);
 	if (event == PM_SUSPEND_PREPARE) {
 		is_suspended = true;
 		pr_info("Tegra cpufreq suspend: setting frequency to %d kHz\n",
@@ -666,7 +685,7 @@ static int tegra_cpu_init(struct cpufreq_policy *policy)
 {
 	if (policy->cpu >= CONFIG_NR_CPUS)
 		return -EINVAL;
-
+	//printk(KERN_INFO "%s\n", __func__);
 	cpu_clk = clk_get_sys(NULL, "cpu");
 	if (IS_ERR(cpu_clk))
 		return PTR_ERR(cpu_clk);
@@ -686,7 +705,7 @@ static int tegra_cpu_init(struct cpufreq_policy *policy)
 	target_cpu_speed[policy->cpu] = policy->cur;
 
 	/* FIXME: what's the actual transition time? */
-	policy->cpuinfo.transition_latency = 300 * 1000;
+	policy->cpuinfo.transition_latency = 0;//300 * 1000;
 
 	policy->shared_type = CPUFREQ_SHARED_TYPE_ALL;
 	cpumask_copy(policy->related_cpus, cpu_possible_mask);
@@ -700,6 +719,7 @@ static int tegra_cpu_init(struct cpufreq_policy *policy)
 
 static int tegra_cpu_exit(struct cpufreq_policy *policy)
 {
+	//printk(KERN_INFO "%s\n", __func__);
 	cpufreq_frequency_table_cpuinfo(policy, freq_table);
 	clk_disable(emc_clk);
 	clk_put(emc_clk);
@@ -712,7 +732,7 @@ static int tegra_cpufreq_policy_notifier(
 {
 	int i, ret;
 	struct cpufreq_policy *policy = data;
-
+	////printk(KERN_INFO "%s\n", __func__);
 	if (event == CPUFREQ_NOTIFY) {
 		ret = cpufreq_frequency_table_target(policy, freq_table,
 			policy->max, CPUFREQ_RELATION_H, &i);
@@ -735,19 +755,20 @@ static struct freq_attr *tegra_cpufreq_attr[] = {
 };
 
 static struct cpufreq_driver tegra_cpufreq_driver = {
+	.flags		= CPUFREQ_CONST_LOOPS,
 	.verify		= tegra_verify_speed,
 	.target		= tegra_target,
 	.get		= tegra_getspeed,
 	.init		= tegra_cpu_init,
 	.exit		= tegra_cpu_exit,
 	.name		= "tegra",
+	.owner		= THIS_MODULE,
 	.attr		= tegra_cpufreq_attr,
 };
 
 static void tegra_cpu_early_suspend(struct early_suspend *h)
 {
 	tegra_cpu_user_cap_set(456000);
-
 	mutex_lock(&early_mutex);
 	/* turn off 2nd cpu ALWAYS */
 	if (num_online_cpus() > 1)
@@ -759,7 +780,6 @@ static void tegra_cpu_early_suspend(struct early_suspend *h)
 static void tegra_cpu_late_resume(struct early_suspend *h)
 {
 	tegra_cpu_user_cap_set(1000000);
-
 	mutex_lock(&early_mutex);
 	/* restore dual core operations */
 	if (num_online_cpus() < 2)
