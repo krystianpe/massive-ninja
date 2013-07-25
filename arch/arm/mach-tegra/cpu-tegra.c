@@ -457,9 +457,7 @@ unsigned int tegra_getspeed(unsigned int cpu)
 	return rate;
 }
 
-
-
-
+#ifdef CONFIG_TEGRA_AUTO_HOTPLUG
 #define CPU1_ON_PENDING_MS  4500
 #define CPU1_OFF_PENDING_MS 1000
 #define HI_LIMIT 760000
@@ -467,14 +465,16 @@ unsigned int tegra_getspeed(unsigned int cpu)
 
 extern u64 last_change_time(void);
 static bool up_state = true;
+#endif
 
 static int tegra_update_cpu_speed(unsigned long rate)
 {
 	int ret = 0;
 	struct cpufreq_freqs freqs;
+#ifdef CONFIG_TEGRA_AUTO_HOTPLUG
 	u64 now = jiffies;
 	u64 last_time = last_change_time();
-
+#endif
 	freqs.old = tegra_getspeed(0);
 	freqs.new = rate;
 
@@ -488,10 +488,10 @@ static int tegra_update_cpu_speed(unsigned long rate)
 		return ret;
 
 //	printk(KERN_INFO "%s: now - last_time: %llu\n", __func__, now - last_time);
-
+#ifdef CONFIG_TEGRA_AUTO_HOTPLUG
 	if ((now - last_time) < msecs_to_jiffies(CPU1_ON_PENDING_MS))
 		return -1;
-
+#endif
 #if 0
 	printk(KERN_INFO "%s: freq: %u\n", __func__, freqs.new);
 
