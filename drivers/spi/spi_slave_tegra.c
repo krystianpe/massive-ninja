@@ -373,7 +373,6 @@ static unsigned spi_tegra_calculate_curr_xfer_param(
 		tspi->curr_dma_words = max_word;
 		total_fifo_words = remain_len/tspi->bytes_per_word;
 	}
-
 	/* All transfer should be in one shot */
 	if (tspi->curr_dma_words * tspi->bytes_per_word != t->len) {
 		dev_err(&tspi->pdev->dev, "The requested length can not be"
@@ -747,7 +746,7 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 	tspi->command_reg = command;
 
 	dev_dbg(&tspi->pdev->dev, "The def 0x%x and written 0x%lx\n",
-					tspi->def_command_reg, command);
+				tspi->def_command_reg, command);
 
 	command2 &= ~(SLINK_SS_EN_CS(~0) | SLINK_RXEN | SLINK_TXEN);
 	tspi->cur_direction = 0;
@@ -1016,40 +1015,14 @@ static int spi_tegra_handle_transfer_completion(struct spi_tegra_data *tspi)
 	/* Abort dmas if any error */
 	if (tspi->cur_direction & DATA_DIR_TX) {
 		if (tspi->tx_status) {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 			tegra_dma_dequeue_req(tspi->tx_dma, &tspi->tx_dma_req);
-=======
-			cancel_dma(tspi->tx_dma, &tspi->tx_dma_req);
-//			tegra_dma_dequeue(tspi->tx_dma);
->>>>>>> 06ca946... Initial commit (Krystianp)
-=======
-			tegra_dma_dequeue(tspi->tx_dma);
->>>>>>> 49217ef... further code sync, and some fixes
-=======
-			tegra_dma_dequeue(tspi->tx_dma);
->>>>>>> 49217ef... further code sync, and some fixes
 			err += 1;
 		} else {
 			wait_status = wait_for_completion_interruptible_timeout(
 				&tspi->tx_dma_complete, SLINK_DMA_TIMEOUT);
 			if (wait_status <= 0) {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 				tegra_dma_dequeue_req(tspi->tx_dma,
 							&tspi->tx_dma_req);
-=======
-				//tegra_dma_dequeue(tspi->tx_dma);
-				cancel_dma(tspi->tx_dma, &tspi->tx_dma_req);
->>>>>>> 06ca946... Initial commit (Krystianp)
-=======
-				tegra_dma_dequeue(tspi->tx_dma);
->>>>>>> 49217ef... further code sync, and some fixes
-=======
-				tegra_dma_dequeue(tspi->tx_dma);
->>>>>>> 49217ef... further code sync, and some fixes
 				dev_err(&tspi->pdev->dev, "Error in Dma Tx "
 							"transfer\n");
 				err += 1;
@@ -1059,40 +1032,14 @@ static int spi_tegra_handle_transfer_completion(struct spi_tegra_data *tspi)
 
 	if (tspi->cur_direction & DATA_DIR_RX) {
 		if (tspi->rx_status) {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 			tegra_dma_dequeue_req(tspi->rx_dma, &tspi->rx_dma_req);
-=======
-			cancel_dma(tspi->rx_dma, &tspi->rx_dma_req);
-	//		tegra_dma_dequeue(tspi->rx_dma);
->>>>>>> 06ca946... Initial commit (Krystianp)
-=======
-			tegra_dma_dequeue(tspi->rx_dma);
->>>>>>> 49217ef... further code sync, and some fixes
-=======
-			tegra_dma_dequeue(tspi->rx_dma);
->>>>>>> 49217ef... further code sync, and some fixes
 			err += 2;
 		} else {
 			wait_status = wait_for_completion_interruptible_timeout(
 				&tspi->rx_dma_complete, SLINK_DMA_TIMEOUT);
 			if (wait_status <= 0) {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 				tegra_dma_dequeue_req(tspi->rx_dma,
 						&tspi->rx_dma_req);
-=======
-				cancel_dma(tspi->rx_dma, &tspi->rx_dma_req);
-				//tegra_dma_dequeue(tspi->rx_dma);
->>>>>>> 06ca946... Initial commit (Krystianp)
-=======
-				tegra_dma_dequeue(tspi->rx_dma);
->>>>>>> 49217ef... further code sync, and some fixes
-=======
-				tegra_dma_dequeue(tspi->rx_dma);
->>>>>>> 49217ef... further code sync, and some fixes
 				dev_err(&tspi->pdev->dev, "Error in Dma Rx "
 							"transfer\n");
 				err += 2;
@@ -1104,7 +1051,6 @@ static int spi_tegra_handle_transfer_completion(struct spi_tegra_data *tspi)
 	if (err) {
 		dev_err(&tspi->pdev->dev, "%s ERROR bit set 0x%x\n",
 					 __func__, tspi->status_reg);
-		dump_stack();
 		tegra_periph_reset_assert(tspi->clk);
 		udelay(2);
 		tegra_periph_reset_deassert(tspi->clk);
@@ -1180,7 +1126,7 @@ static irqreturn_t spi_tegra_isr(int irq, void *context_data)
 	return IRQ_WAKE_THREAD;
 }
 
-static int __init spi_slave_tegra_probe(struct platform_device *pdev)
+static int __init spi_tegra_probe(struct platform_device *pdev)
 {
 	struct spi_master	*master;
 	struct spi_tegra_data	*tspi;
@@ -1516,7 +1462,7 @@ static struct platform_driver spi_tegra_driver = {
 
 static int __init spi_tegra_init(void)
 {
-	return platform_driver_probe(&spi_tegra_driver, spi_slave_tegra_probe);
+	return platform_driver_probe(&spi_tegra_driver, spi_tegra_probe);
 }
 subsys_initcall(spi_tegra_init);
 

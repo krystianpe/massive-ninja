@@ -46,7 +46,6 @@
 #include "devices.h"
 #include "gpio-names.h"
 #include "fuse.h"
-#include "tegra2_host1x_devices.h"
 
 #define HDMI_HPD_GPIO TEGRA_GPIO_PN7
 #define DSI_PANEL_RESET 1
@@ -539,6 +538,7 @@ static struct platform_device *olympus_gfx_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_NVMAP)
 	&olympus_nvmap_device,
 #endif
+	&tegra_grhost_device,
 	&tegra_gart_device,
 	&tegra_avp_device,
 	&olympus_disp1_backlight_device,
@@ -557,8 +557,16 @@ static void olympus_panel_early_suspend(struct early_suspend *h)
 		fb_blank(registered_fb[i], FB_BLANK_POWERDOWN);
 
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_store_default_gov();
-	cpufreq_change_gov(cpufreq_conservative_gov);
+	cpufreq_save_default_governor();
+	cpufreq_set_conservative_governor();
+        cpufreq_set_conservative_governor_param("up_threshold",
+			SET_CONSERVATIVE_GOVERNOR_UP_THRESHOLD);
+
+	cpufreq_set_conservative_governor_param("down_threshold",
+			SET_CONSERVATIVE_GOVERNOR_DOWN_THRESHOLD);
+
+	cpufreq_set_conservative_governor_param("freq_step",
+		SET_CONSERVATIVE_GOVERNOR_FREQ_STEP);
 #endif
 }
 
@@ -567,7 +575,7 @@ static void olympus_panel_late_resume(struct early_suspend *h)
 	int i;
 
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_restore_default_gov();
+	cpufreq_restore_default_governor();
 #endif
 
 	for (i = 0; i < num_registered_fb; i++)
@@ -602,12 +610,6 @@ int __init olympus_panel_init(void)
 #if defined(CONFIG_TEGRA_NVMAP)
 	olympus_carveouts[1].base = tegra_carveout_start;
 	olympus_carveouts[1].size = tegra_carveout_size;
-#endif
-
-#ifdef CONFIG_TEGRA_GRHOST
-	err = tegra2_register_host1x_devices();
-	if (err)
-		return err;
 #endif
 
 	err = platform_add_devices(olympus_gfx_devices,

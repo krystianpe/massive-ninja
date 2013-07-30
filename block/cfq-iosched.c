@@ -1,20 +1,4 @@
 /*
- * Copyright 2013: Olympus Kernel Project
- * <http://forum.xda-developers.com/showthread.php?t=2016837>
- 
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
-
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
  *  CFQ, or complete fairness queueing, disk scheduler.
  *
  *  Based on ideas from a previously unfinished io
@@ -2950,6 +2934,7 @@ static void changed_ioprio(struct io_context *ioc, struct cfq_io_context *cic)
 static void cfq_ioc_set_ioprio(struct io_context *ioc)
 {
 	call_for_each_cic(ioc, changed_ioprio);
+	ioc->ioprio_changed = 0;
 }
 
 static void cfq_init_cfqq(struct cfq_data *cfqd, struct cfq_queue *cfqq,
@@ -3241,13 +3226,8 @@ retry:
 		goto err_free;
 
 out:
-	/*
-	 * test_and_clear_bit() implies a memory barrier, paired with
-	 * the wmb() in fs/ioprio.c, so the value seen for ioprio is the
-	 * new one.
-	 */
-	if (unlikely(test_and_clear_bit(IOC_CFQ_IOPRIO_CHANGED,
-					ioc->ioprio_changed)))
+	smp_read_barrier_depends();
+	if (unlikely(ioc->ioprio_changed))
 		cfq_ioc_set_ioprio(ioc);
 
 #ifdef CONFIG_CFQ_GROUP_IOSCHED

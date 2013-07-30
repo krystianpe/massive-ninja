@@ -1,13 +1,9 @@
 /*
  * arch/arm/mach-tegra/wdt-recovery.c
  *
-<<<<<<< HEAD
- * Copyright (c) 2011, NVIDIA Corporation.
-=======
  * Copyright (c) 2012, NVIDIA Corporation.
  * Copyright 2013: Olympus Kernel Project
  * <http://forum.xda-developers.com/showthread.php?t=2016837>
->>>>>>> 639b75c... copyright statements
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,7 +38,7 @@
 #include <mach/clk.h>
 #include <mach/io.h>
 
-/*static int wdt_heartbeat = 30;*/
+static int wdt_heartbeat = 30;
 
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 #define TIMER_PTV			0

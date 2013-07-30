@@ -1097,7 +1097,6 @@ static void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 				 */
 				clk = SDHCI_PROG_CLOCK_MODE;
 				div--;
-<<<<<<< HEAD
 			}
 		} else {
 			/* Version 3.00 divisors must be a multiple of 2. */
@@ -1110,20 +1109,6 @@ static void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 						break;
 				}
 			}
-=======
-			}
-		} else {
-			/* Version 3.00 divisors must be a multiple of 2. */
-			if (host->max_clk <= clock)
-				div = 1;
-			else {
-				for (div = 2; div < SDHCI_MAX_DIV_SPEC_300;
-				     div += 2) {
-					if ((host->max_clk / div) <= clock)
-						break;
-				}
-			}
->>>>>>> 3dc881b... code sync, no visible changes yet
 			div >>= 1;
 		}
 	} else {
@@ -1256,34 +1241,11 @@ static void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	host->mrq = mrq;
 
 	/* If polling, assume that the card is always present. */
-<<<<<<< HEAD
-<<<<<<< HEAD
 	if (host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION)
-<<<<<<< HEAD
 		present = true;
-=======
-			present = true;
->>>>>>> 04f2966... new changes
 	else
-=======
-	if (host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION) {
-		if (host->ops->get_cd)
-			present = host->ops->get_cd(host);
-		else
-			present = true;
-	} else {
->>>>>>> 3dc881b... code sync, no visible changes yet
-=======
-	if (host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION) {
-		if (host->ops->get_cd)
-			present = host->ops->get_cd(host);
-		else
-			present = true;
-	} else {
->>>>>>> 3dc881b... code sync, no visible changes yet
 		present = sdhci_readl(host, SDHCI_PRESENT_STATE) &
 				SDHCI_CARD_PRESENT;
-	}
 
 	if (!present || host->flags & SDHCI_DEVICE_DEAD) {
 		host->mrq->cmd->error = -ENOMEDIUM;
@@ -1859,13 +1821,6 @@ out:
 	return err;
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 3dc881b... code sync, no visible changes yet
-=======
->>>>>>> 3dc881b... code sync, no visible changes yet
 static void sdhci_enable_preset_value(struct mmc_host *mmc, bool enable)
 {
 	struct sdhci_host *host;
@@ -1911,8 +1866,6 @@ int sdhci_enable(struct mmc_host *mmc)
 {
 	struct sdhci_host *host = mmc_priv(mmc);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 	if (!mmc->card || mmc->card->type == MMC_TYPE_SDIO)
 		return 0;
 
@@ -1920,25 +1873,6 @@ int sdhci_enable(struct mmc_host *mmc)
 		if (host->ops->set_clock)
 			host->ops->set_clock(host, mmc->ios.clock);
 		sdhci_set_clock(host, mmc->ios.clock);
-=======
-=======
->>>>>>> 3dc881b... code sync, no visible changes yet
-	if (!mmc->card)
-		return 0;
-
-	if (mmc->ios.clock) {
-		if (mmc->card->type != MMC_TYPE_SDIO) {
-			if (host->ops->set_clock)
-				host->ops->set_clock(host, mmc->ios.clock);
-			sdhci_set_clock(host, mmc->ios.clock);
-		} else {
-			if (host->ops->set_card_clock)
-				host->ops->set_card_clock(host, mmc->ios.clock);
-		}
-<<<<<<< HEAD
->>>>>>> 3dc881b... code sync, no visible changes yet
-=======
->>>>>>> 3dc881b... code sync, no visible changes yet
 	}
 
 	return 0;
@@ -1948,45 +1882,16 @@ int sdhci_disable(struct mmc_host *mmc, int lazy)
 {
 	struct sdhci_host *host = mmc_priv(mmc);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 	if (!mmc->card || mmc->card->type == MMC_TYPE_SDIO)
 		return 0;
 
 	sdhci_set_clock(host, 0);
 	if (host->ops->set_clock)
 		host->ops->set_clock(host, 0);
-=======
-=======
->>>>>>> 3dc881b... code sync, no visible changes yet
-	if (!mmc->card)
-		return 0;
-
-	/* For SDIO cards, only disable the card clock. */
-	if (mmc->card->type != MMC_TYPE_SDIO) {
-		sdhci_set_clock(host, 0);
-		if (host->ops->set_clock)
-			host->ops->set_clock(host, 0);
-	} else {
-		if (host->ops->set_card_clock)
-			host->ops->set_card_clock(host, 0);
-	}
-<<<<<<< HEAD
->>>>>>> 3dc881b... code sync, no visible changes yet
-=======
->>>>>>> 3dc881b... code sync, no visible changes yet
 
 	return 0;
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 04f2966... new changes
-=======
->>>>>>> 3dc881b... code sync, no visible changes yet
-=======
->>>>>>> 3dc881b... code sync, no visible changes yet
 static const struct mmc_host_ops sdhci_ops = {
 	.request	= sdhci_request,
 	.set_ios	= sdhci_set_ios,
@@ -2433,75 +2338,22 @@ out:
 int sdhci_suspend_host(struct sdhci_host *host, pm_message_t state)
 {
 	int ret = 0;
-	bool has_tuning_timer;
 	struct mmc_host *mmc = host->mmc;
 
 	sdhci_disable_card_detection(host);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 	/* Disable tuning since we are suspending */
 	if (host->version >= SDHCI_SPEC_300 && host->tuning_count &&
 	    host->tuning_mode == SDHCI_TUNING_MODE_1) {
-=======
-=======
->>>>>>> 3dc881b... code sync, no visible changes yet
-	/* Disable tuning since we are suspending */
-	has_tuning_timer = host->version >= SDHCI_SPEC_300 &&
-		host->tuning_count && host->tuning_mode == SDHCI_TUNING_MODE_1;
-	if (has_tuning_timer) {
-<<<<<<< HEAD
->>>>>>> 3dc881b... code sync, no visible changes yet
-=======
->>>>>>> 3dc881b... code sync, no visible changes yet
 		host->flags &= ~SDHCI_NEEDS_RETUNING;
 		mod_timer(&host->tuning_timer, jiffies +
 			host->tuning_count * HZ);
 	}
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 	if (mmc->card && (mmc->card->type != MMC_TYPE_SDIO))
-=======
-	if (mmc->card) {
->>>>>>> 3dc881b... code sync, no visible changes yet
 		ret = mmc_suspend_host(host->mmc);
-		if (ret) {
-			if (has_tuning_timer) {
-				host->flags |= SDHCI_NEEDS_RETUNING;
-				mod_timer(&host->tuning_timer, jiffies +
-						host->tuning_count * HZ);
-			}
-
-			sdhci_enable_card_detection(host);
-
-			return ret;
-		}
-	}
 
 	if (host->flags & MMC_PM_KEEP_POWER)
-=======
-	if (mmc->card && (mmc->card->type != MMC_TYPE_SDIO))
-=======
-	if (mmc->card) {
->>>>>>> 3dc881b... code sync, no visible changes yet
-		ret = mmc_suspend_host(host->mmc);
-		if (ret) {
-			if (has_tuning_timer) {
-				host->flags |= SDHCI_NEEDS_RETUNING;
-				mod_timer(&host->tuning_timer, jiffies +
-						host->tuning_count * HZ);
-			}
-
-			sdhci_enable_card_detection(host);
-
-			return ret;
-		}
-	}
-
-	if (mmc->pm_flags & MMC_PM_KEEP_POWER)
->>>>>>> 04f2966... new changes
 		host->card_int_set = sdhci_readl(host, SDHCI_INT_ENABLE) &
 			SDHCI_INT_CARD_INT;
 
@@ -2542,12 +2394,15 @@ int sdhci_resume_host(struct sdhci_host *host)
 	mmiowb();
 
 	if (mmc->card) {
-		ret = mmc_resume_host(host->mmc);
-		/* Enable card interrupt as it is overwritten in sdhci_init */
-		if ((mmc->caps & MMC_CAP_SDIO_IRQ) &&
-			(mmc->pm_flags & MMC_PM_KEEP_POWER))
-				if (host->card_int_set)
-					mmc->ops->enable_sdio_irq(mmc, true);
+		if (mmc->card->type != MMC_TYPE_SDIO) {
+			ret = mmc_resume_host(host->mmc);
+		} else {
+			/* Enable card interrupt as it is overwritten in sdhci_init */
+			if ((mmc->caps & MMC_CAP_SDIO_IRQ) &&
+				(mmc->pm_flags & MMC_PM_KEEP_POWER))
+					if (host->card_int_set)
+						mmc->ops->enable_sdio_irq(mmc, true);
+		}
 	}
 
 	sdhci_enable_card_detection(host);
@@ -2805,7 +2660,7 @@ int sdhci_add_host(struct sdhci_host *host)
 		mmc->caps |= MMC_CAP_SD_HIGHSPEED | MMC_CAP_MMC_HIGHSPEED;
 
 	if ((host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION) &&
-	    mmc_card_is_removable(mmc) && !(host->ops->get_cd))
+	    mmc_card_is_removable(mmc))
 		mmc->caps |= MMC_CAP_NEEDS_POLL;
 
 	/* UHS-I mode(s) supported by the host controller. */

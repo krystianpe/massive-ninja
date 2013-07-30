@@ -1,15 +1,10 @@
 /*
  * EHCI-compliant USB host controller driver for NVIDIA Tegra SoCs
  *
-<<<<<<< HEAD
- * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2009 - 2011 NVIDIA Corporation
-=======
  * Copyright (c) 2010 Google, Inc.
  * Copyright (c) 2009-2012 NVIDIA CORPORATION. All rights reserved.
  * Copyright 2013: Olympus Kernel Project
  * <http://forum.xda-developers.com/showthread.php?t=2016837>
->>>>>>> 639b75c... copyright statements
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -175,6 +170,7 @@ static irqreturn_t tegra_ehci_irq (struct usb_hcd *hcd)
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 	u32 val;
 	irqreturn_t irq_status;
+	bool pmc_remote_wakeup = false;
 
 	if ((tegra->phy->usb_phy_type == TEGRA_USB_PHY_TYPE_UTMIP) &&
 		(tegra->ehci->has_hostpc)) {
@@ -186,7 +182,6 @@ static irqreturn_t tegra_ehci_irq (struct usb_hcd *hcd)
 			spin_unlock (&ehci->lock);
 		}
 	}
-<<<<<<< HEAD
 	if (tegra->phy->hotplug) {
 		spin_lock(&ehci->lock);
 		val = readl(hcd->regs + TEGRA_USB_SUSP_CTRL_OFFSET);
@@ -205,16 +200,13 @@ static irqreturn_t tegra_ehci_irq (struct usb_hcd *hcd)
 			writel(val , (hcd->regs + TEGRA_USB_PORTSC1_OFFSET));
 		}
 		spin_unlock(&ehci->lock);
-=======
-	if (tegra_usb_phy_remote_wakeup(tegra->phy)) {
-		ehci_info(ehci, "remote wakeup detected\n");
-		usb_hcd_resume_root_hub(hcd);
-		spin_unlock(&ehci->lock);
-		return irq_status;
->>>>>>> df27fc1... usb w_i_p
 	}
 
 	irq_status = ehci_irq(hcd);
+
+	if (pmc_remote_wakeup) {
+		ehci->controller_remote_wakeup = false;
+	}
 
 	if (ehci->controller_remote_wakeup) {
 		ehci->controller_remote_wakeup = false;
@@ -226,10 +218,6 @@ static irqreturn_t tegra_ehci_irq (struct usb_hcd *hcd)
 	return irq_status;
 }
 
-<<<<<<< HEAD
-=======
-
-<<<<<<< HEAD
 #ifdef CONFIG_MACH_OLYMPUS
 void tegra_ehci_enable_host (struct usb_hcd *hcd)
 {
@@ -278,12 +266,6 @@ void tegra_ehci_enable_host (struct usb_hcd *hcd)
 }
 #endif
 
-<<<<<<< HEAD
->>>>>>> 3dc881b... code sync, no visible changes yet
-=======
->>>>>>> 3dc881b... code sync, no visible changes yet
-=======
->>>>>>> df27fc1... usb w_i_p
 static int tegra_ehci_hub_control(
 	struct usb_hcd	*hcd,
 	u16		typeReq,
@@ -293,15 +275,9 @@ static int tegra_ehci_hub_control(
 	u16		wLength
 )
 {
-<<<<<<< HEAD
 	struct ehci_hcd	*ehci = hcd_to_ehci(hcd);
 	int		ports = HCS_N_PORTS(ehci->hcs_params);
 	u32		temp, status;
-=======
-	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
-	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
-	int	retval = 0;
->>>>>>> df27fc1... usb w_i_p
 	u32 __iomem	*status_reg;
 	u32		usbsts_reg;
 
@@ -320,7 +296,6 @@ static int tegra_ehci_hub_control(
 		return retval;
 	}
 
-<<<<<<< HEAD
 	hsic = (tegra->phy->usb_phy_type == TEGRA_USB_PHY_TYPE_HSIC);
 
 	status_reg = &ehci->regs->port_status[(wIndex & 0xff) - 1];
@@ -361,32 +336,6 @@ static int tegra_ehci_hub_control(
 					&ehci->regs->command);
 				/* Now we can safely re-enable irqs */
 				ehci_writel(ehci, INTR_MASK, &ehci->regs->intr_enable);
-=======
-	/* Do tegra phy specific actions based on the type request */
-	switch (typeReq) {
-	case GetPortStatus:
-		if (tegra->port_resuming) {
-			u32 cmd;
-			int delay = ehci->reset_done[wIndex-1] - jiffies;
-			/* Sometimes it seems we get called too soon... In that case, wait.*/
-			if (delay > 0) {
-				ehci_dbg(ehci, "GetPortStatus called too soon, waiting %dms...\n", delay);
-				mdelay(jiffies_to_msecs(delay));
-			}
-			status_reg = &ehci->regs->port_status[(wIndex & 0xff) - 1];
-			/* Ensure the port PORT_SUSPEND and PORT_RESUME has cleared */
-			if (handshake(ehci, status_reg, (PORT_SUSPEND | PORT_RESUME), 0, 25000)) {
-				EHCI_DBG("%s: timeout waiting for SUSPEND to clear\n", __func__);
-			}
-			tegra_usb_phy_post_resume(tegra->phy);
-			tegra->port_resuming = 0;
-			/* If run bit is not set by now enable it */
-			cmd = ehci_readl(ehci, &ehci->regs->command);
-			if (!(cmd & CMD_RUN)) {
-				cmd |= CMD_RUN;
-				ehci->command |= CMD_RUN;
-				ehci_writel(ehci, cmd, &ehci->regs->command);
->>>>>>> df27fc1... usb w_i_p
 			}
 		}
 
@@ -1177,11 +1126,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct usb_hcd *hcd;
 	struct tegra_ehci_hcd *tegra;
-<<<<<<< HEAD
 	struct tegra_ehci_platform_data *pdata;
-=======
-	struct tegra_usb_platform_data *pdata = dev_get_platdata(&pdev->dev);
->>>>>>> df27fc1... usb w_i_p
 	int err = 0;
 	int irq;
 	int instance = pdev->id;
@@ -1309,7 +1254,6 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 		goto fail;
 	}
 
-<<<<<<< HEAD
 	err = enable_irq_wake(tegra->irq);
 	if (err < 0) {
 		dev_warn(&pdev->dev,
@@ -1317,17 +1261,6 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 			"error=%d\n", tegra->irq, err);
 		err = 0;
 		tegra->irq = 0;
-=======
-	if (pdata->u_data.host.remote_wakeup_supported) {
-		err = enable_irq_wake(tegra->irq);
-		if (err < 0) {
-			dev_warn(&pdev->dev,
-					"Couldn't enable USB host mode wakeup,"
-					" irq=%d error=%d\n", irq, err);
-			err = 0;
-			tegra->irq = 0;
-		}
->>>>>>> df27fc1... usb w_i_p
 	}
 
 	return err;
@@ -1409,7 +1342,6 @@ static int tegra_ehci_suspend(struct platform_device *pdev, pm_message_t state)
 static int tegra_ehci_remove(struct platform_device *pdev)
 {
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
-	struct tegra_usb_platform_data *pdata = dev_get_platdata(&pdev->dev);
 	struct usb_hcd *hcd = ehci_to_hcd(tegra->ehci);
 
 	if (tegra == NULL || hcd == NULL)
@@ -1425,26 +1357,17 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 	}
 #endif
 
-<<<<<<< HEAD
 	/* Turn Off Interrupts */
 	ehci_writel(tegra->ehci, 0, &tegra->ehci->regs->intr_enable);
 	clear_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
 	if (tegra->irq)
-=======
-	if (tegra->irq && pdata->u_data.host.remote_wakeup_supported)
->>>>>>> df27fc1... usb w_i_p
 		disable_irq_wake(tegra->irq);
 	usb_remove_hcd(hcd);
-<<<<<<< HEAD
 	usb_put_hcd(hcd);
 	cancel_delayed_work(&tegra->work);
 	tegra_usb_phy_power_off(tegra->phy, true);
-=======
-	tegra_usb_phy_power_off(tegra->phy);
->>>>>>> df27fc1... usb w_i_p
 	tegra_usb_phy_close(tegra->phy);
 	iounmap(hcd->regs);
-	usb_put_hcd(hcd);
 
 	del_timer_sync(&tegra->clk_timer);
 

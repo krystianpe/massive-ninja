@@ -3,13 +3,9 @@
  *
  * System DMA driver for NVIDIA Tegra SoCs
  *
-<<<<<<< HEAD
- * Copyright (c) 2008-2011, NVIDIA Corporation.
-=======
  * Copyright (c) 2008-2012, NVIDIA Corporation.
  * Copyright 2013: Olympus Kernel Project
  * <http://forum.xda-developers.com/showthread.php?t=2016837>
->>>>>>> 639b75c... copyright statements
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -172,41 +168,7 @@ void tegra_dma_stop(struct tegra_dma_channel *ch)
 		writel(status, ch->addr + APB_DMA_CHAN_STA);
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 bool tegra_dma_is_stopped(struct tegra_dma_channel *ch)
-=======
-void tegra_dma_dequeue(struct tegra_dma_channel *ch)
-=======
-void tegra_dma_dequeue(struct tegra_dma_channel *ch)
-{
-	struct tegra_dma_req *req;
-
-	if (tegra_dma_is_empty(ch))
-		return;
-
-	req = list_entry(ch->list.next, typeof(*req), node);
-
-	tegra_dma_dequeue_req(ch, req);
-	return;
-}
-
-static void pause_dma(bool wait_for_burst_complete)
->>>>>>> 49217ef... further code sync, and some fixes
-{
-	struct tegra_dma_req *req;
-
-	if (tegra_dma_is_empty(ch))
-		return;
-
-	req = list_entry(ch->list.next, typeof(*req), node);
-
-	tegra_dma_dequeue_req(ch, req);
-	return;
-}
-
-static void pause_dma(bool wait_for_burst_complete)
->>>>>>> 49217ef... further code sync, and some fixes
 {
 	return !!(readl(ch->addr + APB_DMA_CHAN_STA) & CSR_ENB);
 }

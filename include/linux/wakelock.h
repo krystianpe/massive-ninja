@@ -1,8 +1,6 @@
 /* include/linux/wakelock.h
  *
  * Copyright (C) 2007-2008 Google, Inc.
- * Copyright 2013: Olympus Kernel Project
- * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -74,7 +72,6 @@ int wake_lock_active(struct wake_lock *lock);
  * number of jiffies until all active wake locks time out.
  */
 long has_wake_lock(int type);
-void dump_active_lock_static(void);
 
 #else
 
@@ -87,7 +84,6 @@ static inline void wake_unlock(struct wake_lock *lock) {}
 
 static inline int wake_lock_active(struct wake_lock *lock) { return 0; }
 static inline long has_wake_lock(int type) { return 0; }
-void dump_active_lock_static(void){}
 
 #endif
 

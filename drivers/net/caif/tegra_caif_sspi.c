@@ -256,10 +256,10 @@ static int sspi_init_xfer(struct cfspi_xfer *xfer, struct cfspi_dev *dev)
 	if (!tegra_caif_spi_slave_device)
 		return -ENODEV;
 
-	err = spi_tegra_register_callback(tegra_caif_spi_slave_device,
+	err = spi_tegra_register_ready_callback(tegra_caif_spi_slave_device,
 		sspi_callback, sspi);
 	if (err < 0) {
-		pr_err("\nspi_tegra_register_callback() failed\n");
+		pr_err("\nspi_tegra_register_ready_callback() failed\n");
 		return -ENODEV;
 	}
 	memset(&t, 0, sizeof(t));

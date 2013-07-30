@@ -1250,16 +1250,10 @@ static int set_power_helper(struct ov5650_platform_data *pdata,
 				int powerLevel)
 {
 	if (pdata) {
-		if (powerLevel && pdata->power_on) {
-			if (*ref_cnt == 0)
-				pdata->power_on(pdata->power_id);
-			*ref_cnt = *ref_cnt + 1;
-		}
-		else if (pdata->power_off) {
-			*ref_cnt = *ref_cnt - 1;
-			if (*ref_cnt <= 0)
-				pdata->power_off(pdata->power_id);
-		}
+		if (powerLevel && pdata->power_on)
+			pdata->power_on(pdata->power_id);
+		else if (pdata->power_off)
+			pdata->power_off(pdata->power_id);
 	}
 	return 0;
 }
@@ -1269,20 +1263,8 @@ static int ov5650_set_power(int powerLevel)
 	pr_info("%s: powerLevel=%d camera mode=%d\n", __func__, powerLevel,
 			stereo_ov5650_info->camera_mode);
 
-// for Olympus
-	if (Main & stereo_ov5650_info->camera_mode) {
-		mutex_lock(&info->mutex_le);
-		set_power_helper(stereo_ov5650_info->left.pdata, powerLevel,
-				&info->power_refcnt_le);
-		mutex_unlock(&info->mutex_le);
-	}
-
-	if (StereoCameraMode_Left & info->camera_mode) {
-		mutex_lock(&info->mutex_le);
-		set_power_helper(info->left.pdata, powerLevel,
-			&info->power_refcnt_le);
-		mutex_unlock(&info->mutex_le);
-	}
+	if (StereoCameraMode_Left & stereo_ov5650_info->camera_mode)
+		set_power_helper(stereo_ov5650_info->left.pdata, powerLevel);
 
 	if (StereoCameraMode_Right & stereo_ov5650_info->camera_mode)
 		set_power_helper(stereo_ov5650_info->right.pdata, powerLevel);
@@ -1385,26 +1367,8 @@ static long ov5650_ioctl(struct file *file,
 		}
 		return ov5650_set_group_hold(info, &ae);
 	}
-	case OV5650_IOCTL_GET_SENSORDATA:
-	{
-		printk (KERN_INFO "%s: doing OV5650_IOCTL_GET_SENSORDATA", __func__);
-		err = ov5650_get_sensor_id(info);
-		if (err) {
-			pr_err("%s %d %d\n", __func__, __LINE__, err);
-			return err;
-		}
-		if (copy_to_user((void __user *)arg,
-				&info->sensor_data,
-				sizeof(struct ov5650_sensordata))) {
-			pr_info("%s %d\n", __func__, __LINE__);
-			return -EFAULT;
-		}
-		return 0;
-	}
-	default:{
-		printk (KERN_INFO "%s: bad command", __func__);
+	default:
 		return -EINVAL;
-	}
 	}
 	return 0;
 }

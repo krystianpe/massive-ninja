@@ -4,8 +4,6 @@
  * Tegra Graphics Host Syncpoints
  *
  * Copyright (c) 2010-2012, NVIDIA Corporation.
- * Copyright 2013: Olympus Kernel Project
- * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -261,179 +259,12 @@ void nvhost_mutex_unlock(struct nvhost_syncpt *sp, int idx)
 	atomic_dec(&sp->lock_counts[idx]);
 }
 
-/* remove a wait pointed to by patch_addr */
-int nvhost_syncpt_patch_wait(struct nvhost_syncpt *sp, void *patch_addr)
-{
-	return syncpt_op().patch_wait(sp, patch_addr);
-}
-
-/* Displays the current value of the sync point via sysfs */
-static ssize_t syncpt_min_show(struct kobject *kobj,
-		struct kobj_attribute *attr, char *buf)
-{
-	struct nvhost_syncpt_attr *syncpt_attr =
-		container_of(attr, struct nvhost_syncpt_attr, attr);
-
-	return snprintf(buf, PAGE_SIZE, "%d",
-			nvhost_syncpt_read(&syncpt_attr->host->syncpt,
-				syncpt_attr->id));
-}
-
-static ssize_t syncpt_max_show(struct kobject *kobj,
-		struct kobj_attribute *attr, char *buf)
-{
-	struct nvhost_syncpt_attr *syncpt_attr =
-		container_of(attr, struct nvhost_syncpt_attr, attr);
-
-	return snprintf(buf, PAGE_SIZE, "%d",
-			nvhost_syncpt_read_max(&syncpt_attr->host->syncpt,
-				syncpt_attr->id));
-}
-
-int nvhost_syncpt_init(struct nvhost_device *dev,
-		struct nvhost_syncpt *sp)
-{
-	int i;
-	struct nvhost_master *host = syncpt_to_dev(sp);
-	int err = 0;
-
-	/* Allocate structs for min, max and base values */
-	sp->min_val = kzalloc(sizeof(atomic_t) * nvhost_syncpt_nb_pts(sp),
-			GFP_KERNEL);
-	sp->max_val = kzalloc(sizeof(atomic_t) * nvhost_syncpt_nb_pts(sp),
-			GFP_KERNEL);
-	sp->base_val = kzalloc(sizeof(u32) * nvhost_syncpt_nb_bases(sp),
-			GFP_KERNEL);
-	sp->lock_counts =
-		kzalloc(sizeof(atomic_t) * nvhost_syncpt_nb_mlocks(sp),
-			GFP_KERNEL);
-
-	if (!(sp->min_val && sp->max_val && sp->base_val && sp->lock_counts)) {
-		/* frees happen in the deinit */
-		err = -ENOMEM;
-		goto fail;
-	}
-
-	sp->kobj = kobject_create_and_add("syncpt", &dev->dev.kobj);
-	if (!sp->kobj) {
-		err = -EIO;
-		goto fail;
-	}
-
-	/* Allocate two attributes for each sync point: min and max */
-	sp->syncpt_attrs = kzalloc(sizeof(*sp->syncpt_attrs)
-			* nvhost_syncpt_nb_pts(sp) * 2, GFP_KERNEL);
-	if (!sp->syncpt_attrs) {
-		err = -ENOMEM;
-		goto fail;
-	}
-
-	/* Fill in the attributes */
-	for (i = 0; i < nvhost_syncpt_nb_pts(sp); i++) {
-		char name[MAX_SYNCPT_LENGTH];
-		struct kobject *kobj;
-		struct nvhost_syncpt_attr *min = &sp->syncpt_attrs[i*2];
-		struct nvhost_syncpt_attr *max = &sp->syncpt_attrs[i*2+1];
-
-		/* Create one directory per sync point */
-		snprintf(name, sizeof(name), "%d", i);
-		kobj = kobject_create_and_add(name, sp->kobj);
-		if (!kobj) {
-			err = -EIO;
-			goto fail;
-		}
-
-		min->id = i;
-		min->host = host;
-		sysfs_attr_init(&min->attr.attr);
-		min->attr.attr.name = min_name;
-		min->attr.attr.mode = S_IRUGO;
-		min->attr.show = syncpt_min_show;
-		if (sysfs_create_file(kobj, &min->attr.attr)) {
-			err = -EIO;
-			goto fail;
-		}
-
-		max->id = i;
-		max->host = host;
-		sysfs_attr_init(&max->attr.attr);
-		max->attr.attr.name = max_name;
-		max->attr.attr.mode = S_IRUGO;
-		max->attr.show = syncpt_max_show;
-		if (sysfs_create_file(kobj, &max->attr.attr)) {
-			err = -EIO;
-			goto fail;
-		}
-	}
-
-	return err;
-
-fail:
-	nvhost_syncpt_deinit(sp);
-	return err;
-}
-
-void nvhost_syncpt_deinit(struct nvhost_syncpt *sp)
-{
-	kobject_put(sp->kobj);
-
-	kfree(sp->min_val);
-	sp->min_val = NULL;
-
-	kfree(sp->max_val);
-	sp->max_val = NULL;
-
-	kfree(sp->base_val);
-	sp->base_val = NULL;
-
-	kfree(sp->lock_counts);
-	sp->lock_counts = 0;
-
-	kfree(sp->syncpt_attrs);
-	sp->syncpt_attrs = NULL;
-}
-
-int nvhost_syncpt_client_managed(struct nvhost_syncpt *sp, u32 id)
-{
-	return BIT(id) & syncpt_to_dev(sp)->info.client_managed;
-}
-
-int nvhost_syncpt_nb_pts(struct nvhost_syncpt *sp)
-{
-	return syncpt_to_dev(sp)->info.nb_pts;
-}
-
-int nvhost_syncpt_nb_bases(struct nvhost_syncpt *sp)
-{
-	return syncpt_to_dev(sp)->info.nb_bases;
-}
-
-int nvhost_syncpt_nb_mlocks(struct nvhost_syncpt *sp)
-{
-	return syncpt_to_dev(sp)->info.nb_mlocks;
-}
-
-/* public sync point API */
-u32 nvhost_syncpt_incr_max_ext(struct nvhost_device *dev, u32 id, u32 incrs)
-{
-	struct nvhost_syncpt *sp = &(nvhost_get_host(dev)->syncpt);
-	return nvhost_syncpt_incr_max(sp, id, incrs);
-}
-
-void nvhost_syncpt_cpu_incr_ext(struct nvhost_device *dev, u32 id)
-{
-	struct nvhost_syncpt *sp = &(nvhost_get_host(dev)->syncpt);
-	nvhost_syncpt_cpu_incr(sp, id);
-}
-
-u32 nvhost_syncpt_read_ext(struct nvhost_device *dev, u32 id)
-{
-	struct nvhost_syncpt *sp = &(nvhost_get_host(dev)->syncpt);
-	return nvhost_syncpt_read(sp, id);
-}
-
-int nvhost_syncpt_wait_timeout_ext(struct nvhost_device *dev, u32 id, u32 thresh,
-	u32 timeout, u32 *value)
+/* check for old WAITs to be removed (avoiding a wrap) */
+int nvhost_syncpt_wait_check(struct nvhost_syncpt *sp,
+			     struct nvmap_client *nvmap,
+			     u32 waitchk_mask,
+			     struct nvhost_waitchk *wait,
+			     int num_waitchk)
 {
 	return syncpt_op(sp).wait_check(sp, nvmap,
 			waitchk_mask, wait, num_waitchk);

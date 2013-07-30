@@ -5,19 +5,10 @@
  *
  * Copyright (c) 2010-2012, NVIDIA Corporation.
  *
-<<<<<<< HEAD
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
-=======
- * Copyright 2013: Olympus Kernel Project
- * <http://forum.xda-developers.com/showthread.php?t=2016837>
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
->>>>>>> 639b75c... copyright statements
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -190,10 +181,8 @@ static void schedule_clockgating_locked(struct nvhost_device *dev)
 
 void nvhost_module_busy(struct nvhost_device *dev)
 {
-	struct nvhost_driver *drv = to_nvhost_driver(dev->dev.driver);
-
-	if (drv->busy)
-		drv->busy(dev);
+	if (dev->busy)
+		dev->busy(dev);
 
 	mutex_lock(&dev->lock);
 	cancel_delayed_work(&dev->powerstate_down);
@@ -201,7 +190,6 @@ void nvhost_module_busy(struct nvhost_device *dev)
 	dev->refcount++;
 	if (dev->refcount > 0 && !nvhost_module_powered(dev))
 		to_state_running_locked(dev);
-
 	mutex_unlock(&dev->lock);
 }
 
@@ -389,57 +377,6 @@ int nvhost_module_init(struct nvhost_device *dev)
 		do_unpowergate_locked(dev->powergate_ids[0]);
 		do_unpowergate_locked(dev->powergate_ids[1]);
 		dev->powerstate = NVHOST_POWER_STATE_CLOCKGATED;
-	}
-
-	/* Init the power sysfs attributes for this device */
-	dev->power_attrib = kzalloc(sizeof(struct nvhost_device_power_attr),
-		GFP_KERNEL);
-	if (!dev->power_attrib) {
-		dev_err(&dev->dev, "Unable to allocate sysfs attributes\n");
-		return -ENOMEM;
-	}
-	dev->power_attrib->ndev = dev;
-
-	dev->power_kobj = kobject_create_and_add("acm", &dev->dev.kobj);
-	if (!dev->power_kobj) {
-		dev_err(&dev->dev, "Could not add dir 'power'\n");
-		err = -EIO;
-		goto fail_attrib_alloc;
-	}
-
-	attr = &dev->power_attrib->power_attr[NVHOST_POWER_SYSFS_ATTRIB_CLOCKGATE_DELAY];
-	sysfs_attr_init(&attr->attr);
-	attr->attr.name = "clockgate_delay";
-	attr->attr.mode = S_IWUSR | S_IRUGO;
-	attr->show = clockgate_delay_show;
-	attr->store = clockgate_delay_store;
-	if (sysfs_create_file(dev->power_kobj, &attr->attr)) {
-		dev_err(&dev->dev, "Could not create sysfs attribute clockgate_delay\n");
-		err = -EIO;
-		goto fail_clockdelay;
-	}
-
-	attr = &dev->power_attrib->power_attr[NVHOST_POWER_SYSFS_ATTRIB_POWERGATE_DELAY];
-	sysfs_attr_init(&attr->attr);
-	attr->attr.name = "powergate_delay";
-	attr->attr.mode = S_IWUSR | S_IRUGO;
-	attr->show = powergate_delay_show;
-	attr->store = powergate_delay_store;
-	if (sysfs_create_file(dev->power_kobj, &attr->attr)) {
-		dev_err(&dev->dev, "Could not create sysfs attribute powergate_delay\n");
-		err = -EIO;
-		goto fail_powergatedelay;
-	}
-
-	attr = &dev->power_attrib->power_attr[NVHOST_POWER_SYSFS_ATTRIB_REFCOUNT];
-	sysfs_attr_init(&attr->attr);
-	attr->attr.name = "refcount";
-	attr->attr.mode = S_IRUGO;
-	attr->show = refcount_show;
-	if (sysfs_create_file(dev->power_kobj, &attr->attr)) {
-		dev_err(&dev->dev, "Could not create sysfs attribute refcount\n");
-		err = -EIO;
-		goto fail_refcount;
 	}
 
 	return 0;

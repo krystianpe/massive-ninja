@@ -148,13 +148,6 @@ struct mmc_test_card {
 	struct mmc_test_general_result	*gr;
 };
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 3dc881b... code sync, no visible changes yet
-=======
->>>>>>> 3dc881b... code sync, no visible changes yet
 enum mmc_test_prep_media {
 	MMC_TEST_PREP_NONE = 0,
 	MMC_TEST_PREP_WRITE_FULL = 1 << 0,
@@ -176,107 +169,6 @@ struct mmc_test_async_req {
 	struct mmc_test_card *test;
 };
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 04f2966... new changes
-=======
-=======
->>>>>>> 3dc881b... code sync, no visible changes yet
-struct mmc_test_parameter {
-	const char *name;
-	long value;
-	long (*exec)(struct mmc_test_card *);
-	const char *input;
-};
-
-static long mmc_test_set_testcase(struct mmc_test_card *test);
-static long mmc_test_set_clock(struct mmc_test_card *test);
-static long mmc_test_set_bus_width(struct mmc_test_card *test);
-static long mmc_test_set_timing(struct mmc_test_card *test);
-
-
-static struct mmc_test_parameter mmc_test_parameter[] = {
-	{
-		.name = "Testcase Number",
-		.value = 1,
-		.exec = mmc_test_set_testcase,
-		.input = "-n",
-	},
-	{
-		.name = "Clock Rate",
-		.value = -1,
-		.exec = mmc_test_set_clock,
-		.input = "-c",
-	},
-	{
-		.name = "Bus Width",
-		.value = -1,
-		.exec = mmc_test_set_bus_width,
-		.input = "-b",
-	},
-	{
-		.name = "Timing",
-		.value = -1,
-		.exec = mmc_test_set_timing,
-		.input = "-t",
-	},
-};
-
-static long mmc_test_set_testcase(struct mmc_test_card *test)
-{
-	return mmc_test_parameter[0].value;
-}
-
-static long mmc_test_set_clock(struct mmc_test_card *test)
-{
-	long clock = mmc_test_parameter[1].value;
-	if (-1 == clock)
-		return test->card->host->ios.clock;
-	WARN_ON(clock < test->card->host->f_min);
-	if (clock > test->card->host->f_max)
-		clock = test->card->host->f_max;
-
-	test->card->host->ios.clock = clock;
-
-	return test->card->host->ios.clock;
-}
-
-static long mmc_test_set_bus_width(struct mmc_test_card *test)
-{
-	long bus_width = mmc_test_parameter[2].value;
-	if (-1 == bus_width)
-		return test->card->host->ios.bus_width;
-
-	test->card->host->ios.bus_width = bus_width;
-
-	return test->card->host->ios.bus_width = bus_width;
-}
-
-static long mmc_test_set_timing(struct mmc_test_card *test)
-{
-	long timing = mmc_test_parameter[3].value;
-	if (-1 == timing)
-		return test->card->host->ios.timing;
-	test->card->host->ios.timing = timing;
-
-	return test->card->host->ios.timing;
-}
-
-static void mmc_test_set_parameters(struct mmc_test_card *test)
-{
-	int i;
-	for (i = 0; i < ARRAY_SIZE(mmc_test_parameter); i++) {
-		printk(KERN_INFO "Parameter[%s] set to [%ld]\n",
-			mmc_test_parameter[i].name,
-			mmc_test_parameter[i].exec(test));
-	}
-}
-
-<<<<<<< HEAD
->>>>>>> 3dc881b... code sync, no visible changes yet
-=======
->>>>>>> 3dc881b... code sync, no visible changes yet
 /*******************************************************************/
 /*  General helper functions                                       */
 /*******************************************************************/

@@ -8,9 +8,6 @@
  *
  * Copyright (C) 2010-2011 NVIDIA Corporation
  *
- * Copyright 2013: Olympus Kernel Project
- * <http://forum.xda-developers.com/showthread.php?t=2016837>
- *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
  * may be copied, distributed, and modified under those terms.
@@ -516,9 +513,6 @@ struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
 			goto err_free;
 		}
 		tegra_fb->valid = true;
-#ifdef TEGRA_FB_BLANK_ON_PROBE
-                memset(fb_base, 0x00, fb_size);
-#endif
 	}
 
 	info->fbops = &tegra_fb_ops;

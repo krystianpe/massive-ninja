@@ -3,9 +3,6 @@
  *
  *  Copyright (C) 2000 Andrea Arcangeli <andrea@suse.de> SuSE
  *
- * Copyright 2013: Olympus Kernel Project
- * <http://forum.xda-developers.com/showthread.php?t=2016837>
- *
  * 30042000 Jens Axboe <axboe@kernel.dk> :
  *
  * Split the elevator a bit so that it is possible to choose a different
@@ -606,41 +603,6 @@ void elv_requeue_request(struct request_queue *q, struct request *rq)
 	__elv_add_request(q, rq, ELEVATOR_INSERT_REQUEUE);
 }
 
-/**
- * elv_reinsert_request() - Insert a request back to the scheduler
- * @q:		request queue where request should be inserted
- * @rq:		request to be inserted
- *
- * This function returns the request back to the scheduler to be
- * inserted as if it was never dispatched
- *
- * Return: 0 on success, error code on failure
- */
-int elv_reinsert_request(struct request_queue *q, struct request *rq)
-{
-	int res;
-
-	if (!q->elevator->ops->elevator_reinsert_req_fn)
-		return -EPERM;
-
-	res = q->elevator->ops->elevator_reinsert_req_fn(q, rq);
-	if (!res) {
-		/*
-		 * it already went through dequeue, we need to decrement the
-		 * in_flight count again
-		 */
-		if (blk_account_rq(rq)) {
-			q->in_flight[rq_is_sync(rq)]--;
-			if (rq->cmd_flags & REQ_SORTED)
-				elv_deactivate_rq(q, rq);
-		}
-		rq->cmd_flags &= ~REQ_STARTED;
-		q->nr_sorted++;
-	}
-
-	return res;
-}
-
 void elv_drain_elevator(struct request_queue *q)
 {
 	static int printed;
@@ -844,12 +806,6 @@ EXPORT_SYMBOL(elv_abort_queue);
 void elv_completed_request(struct request_queue *q, struct request *rq)
 {
 	struct elevator_queue *e = q->elevator;
-
-	if (test_bit(REQ_ATOM_URGENT, &rq->atomic_flags)) {
-		q->notified_urgent = false;
-		q->dispatched_urgent = false;
-		blk_clear_rq_urgent(rq);
-	}
 
 	/*
 	 * request is released from the driver, io must be done

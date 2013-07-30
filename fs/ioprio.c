@@ -2,8 +2,6 @@
  * fs/ioprio.c
  *
  * Copyright (C) 2004 Jens Axboe <axboe@kernel.dk>
- * Copyright 2013: Olympus Kernel Project
- * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * Helper functions for setting/querying io priorities of processes. The
  * system calls closely mimmick getpriority/setpriority, see the man page for
@@ -32,7 +30,7 @@
 
 int set_task_ioprio(struct task_struct *task, int ioprio)
 {
-	int err, i;
+	int err;
 	struct io_context *ioc;
 	const struct cred *cred = current_cred(), *tcred;
 
@@ -62,17 +60,12 @@ int set_task_ioprio(struct task_struct *task, int ioprio)
 			err = -ENOMEM;
 			break;
 		}
-		/* let other ioc users see the new values */
-		smp_wmb();
 		task->io_context = ioc;
 	} while (1);
 
 	if (!err) {
 		ioc->ioprio = ioprio;
-		/* make sure schedulers see the new ioprio value */
-		wmb();
-		for (i = 0; i < IOC_IOPRIO_CHANGED_BITS; i++)
-			set_bit(i, ioc->ioprio_changed);
+		ioc->ioprio_changed = 1;
 	}
 
 	task_unlock(task);

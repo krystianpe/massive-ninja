@@ -1,13 +1,5 @@
 GCOV_PROFILE := y
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 49217ef... further code sync, and some fixes
-#subdir-ccflags-y := -Werror
-
->>>>>>> 49217ef... further code sync, and some fixes
 # Tegra platform Support
 snd-soc-tegra-pcm-objs := tegra_pcm.o
 snd-soc-tegra20-spdif-objs := tegra20_spdif.o
@@ -37,11 +29,7 @@ snd-soc-tegra-max98088-objs := tegra_max98088.o
 snd-soc-tegra-aic326x-objs := tegra_aic326x.o
 snd-soc-tegra-rt5640-objs := tegra_rt5640.o
 snd-soc-tegra-max98095-objs := tegra_max98095.o
-<<<<<<< HEAD
-=======
 snd-soc-motsnd-objs := motsnd.o
-snd-soc-tegra-p1852-objs := tegra_p1852.o
->>>>>>> 265e3f8... codec compiles, motsnd to do
 
 obj-$(CONFIG_SND_SOC_TEGRA_WM8903) += snd-soc-tegra-wm8903.o
 obj-$(CONFIG_SND_SOC_TEGRA_TRIMSLICE) += snd-soc-tegra-trimslice.o
@@ -50,8 +38,4 @@ obj-$(CONFIG_SND_SOC_TEGRA_MAX98088) += snd-soc-tegra-max98088.o
 obj-$(CONFIG_SND_SOC_TEGRA_TLV320AIC326X) += snd-soc-tegra-aic326x.o
 obj-$(CONFIG_SND_SOC_TEGRA_RT5640) += snd-soc-tegra-rt5640.o
 obj-$(CONFIG_SND_SOC_TEGRA_MAX98095) += snd-soc-tegra-max98095.o
-<<<<<<< HEAD
-=======
 obj-$(CONFIG_SND_SOC_TEGRA_MOTSND) += snd-soc-motsnd.o
-obj-$(CONFIG_SND_SOC_TEGRA_P1852) += snd-soc-tegra-p1852.o
->>>>>>> 265e3f8... codec compiles, motsnd to do

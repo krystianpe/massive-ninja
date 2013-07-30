@@ -59,24 +59,10 @@ MODULE_ALIAS("mmc:block");
 #define INAND_CMD38_ARG_SECTRIM1 0x81
 #define INAND_CMD38_ARG_SECTRIM2 0x88
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 #define MMC_CMD_RETRIES 	10
 
 static DEFINE_MUTEX(block_mutex);
 
-=======
-#define MMC_CMD_RETRIES 10
->>>>>>> 04f2966... new changes
-=======
-static DEFINE_MUTEX(block_mutex);
-
->>>>>>> 3dc881b... code sync, no visible changes yet
-=======
-static DEFINE_MUTEX(block_mutex);
-
->>>>>>> 3dc881b... code sync, no visible changes yet
 /*
  * The defaults come from config options but can be overriden by module
  * or bootarg options.
@@ -922,48 +908,9 @@ static int mmc_blk_err_check(struct mmc_card *card,
 		}
 	}
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-	/*
-	 * Reliable writes are used to implement Forced Unit Access and
-	 * REQ_META accesses, and are supported only on MMCs.
-	 *
-	 * XXX: this really needs a good explanation of why REQ_META
-	 * is treated special.
-	 */
-	bool do_rel_wr = ((req->cmd_flags & REQ_FUA) ||
-			  (req->cmd_flags & REQ_META)) &&
-		(rq_data_dir(req) == WRITE) &&
-		(md->flags & MMC_BLK_REL_WR);
-
-	memset(brq, 0, sizeof(struct mmc_blk_request));
-	brq->mrq.cmd = &brq->cmd;
-	brq->mrq.data = &brq->data;
-
-	brq->cmd.arg = blk_rq_pos(req);
-	if (!mmc_card_blockaddr(card))
-		brq->cmd.arg <<= 9;
-	brq->cmd.flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_ADTC;
-	brq->cmd.retries = MMC_CMD_RETRIES;
-	brq->data.blksz = 512;
-	brq->stop.opcode = MMC_STOP_TRANSMISSION;
-	brq->stop.arg = 0;
-	brq->stop.flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
-	brq->data.blocks = blk_rq_sectors(req);
-=======
-		mmc_set_data_timeout(&brq.data, card);
->>>>>>> 04f2966... new changes
-=======
 	if (ret == MMC_BLK_SUCCESS &&
 	    blk_rq_bytes(req) != brq->data.bytes_xfered)
 		ret = MMC_BLK_PARTIAL;
->>>>>>> 3dc881b... code sync, no visible changes yet
-=======
-	if (ret == MMC_BLK_SUCCESS &&
-	    blk_rq_bytes(req) != brq->data.bytes_xfered)
-		ret = MMC_BLK_PARTIAL;
->>>>>>> 3dc881b... code sync, no visible changes yet
 
 	return ret;
 }
@@ -998,6 +945,7 @@ static void mmc_blk_rw_rq_prep(struct mmc_queue_req *mqrq,
 	if (!mmc_card_blockaddr(card))
 		brq->cmd.arg <<= 9;
 	brq->cmd.flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_ADTC;
+	brq->cmd.retries = MMC_CMD_RETRIES;
 	brq->data.blksz = 512;
 	brq->stop.opcode = MMC_STOP_TRANSMISSION;
 	brq->stop.arg = 0;

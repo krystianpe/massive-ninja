@@ -1,28 +1,10 @@
-/*
- * Copyright 2013: Olympus Kernel Project
- * <http://forum.xda-developers.com/showthread.php?t=2016837>
- 
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
-
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #ifndef IOCONTEXT_H
 #define IOCONTEXT_H
 
-#include <linux/bitmap.h>
 #include <linux/radix-tree.h>
 #include <linux/rcupdate.h>
 
+struct cfq_queue;
 struct cfq_ttime {
 	unsigned long last_end_request;
 
@@ -34,14 +16,11 @@ struct cfq_ttime {
 struct cfq_io_context {
 	void *key;
 
-	void *cfqq[2];
+	struct cfq_queue *cfqq[2];
 
 	struct io_context *ioc;
 
 	struct cfq_ttime ttime;
-
-	unsigned int raising_time_left;
-	unsigned int saved_idle_window;
 
 	struct list_head queue_list;
 	struct hlist_node cic_list;
@@ -50,16 +29,6 @@ struct cfq_io_context {
 	void (*exit)(struct io_context *); /* called on task exit */
 
 	struct rcu_head rcu_head;
-};
-
-/*
- * Indexes into the ioprio_changed bitmap.  A bit set indicates that
- * the corresponding I/O scheduler needs to see a ioprio update.
- */
-enum {
-	IOC_CFQ_IOPRIO_CHANGED,
-	IOC_BFQ_IOPRIO_CHANGED,
-	IOC_IOPRIO_CHANGED_BITS
 };
 
 /*
@@ -74,7 +43,7 @@ struct io_context {
 	spinlock_t lock;
 
 	unsigned short ioprio;
-	DECLARE_BITMAP(ioprio_changed, IOC_IOPRIO_CHANGED_BITS);
+	unsigned short ioprio_changed;
 
 #if defined(CONFIG_BLK_CGROUP) || defined(CONFIG_BLK_CGROUP_MODULE)
 	unsigned short cgroup_changed;
@@ -88,8 +57,6 @@ struct io_context {
 
 	struct radix_tree_root radix_root;
 	struct hlist_head cic_list;
-	struct radix_tree_root bfq_radix_root;
-	struct hlist_head bfq_cic_list;
 	void __rcu *ioc_data;
 };
 

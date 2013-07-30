@@ -2967,7 +2967,6 @@ static int __init regulator_init_complete(void)
 	 * which are not in use or always_on.  This will become the
 	 * default behaviour in the future.
 	 */
-
 	list_for_each_entry(rdev, &regulator_list, list) {
 		ops = rdev->desc->ops;
 		c = rdev->constraints;

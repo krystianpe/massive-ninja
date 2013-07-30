@@ -2507,37 +2507,12 @@ static bool _tegra_dc_controller_reset_enable(struct tegra_dc *dc)
 
 static bool _tegra_dc_enable(struct tegra_dc *dc)
 {
-<<<<<<< HEAD
 	if (dc->mode.pclk == 0)
 		return false;
-=======
-
-	if (dc->mode.pclk == 0) {
-		switch (dc->out->type) {
-		case TEGRA_DC_OUT_HDMI:
-		/* DC enable called but no videomode is loaded.
-		     Check if HDMI is connected, then set fallback mdoe */
-		if (tegra_dc_hpd(dc)) {
-			if (_tegra_dc_set_default_videomode(dc))
-				return false;
-		} else
-			return false;
-
-		break;
-
-		/* Do nothing for other outputs for now */
-		case TEGRA_DC_OUT_RGB:
-
-		case TEGRA_DC_OUT_DSI:
-
-		default:
-			return false;
-		}
-	}
->>>>>>> 04f2966... new changes
 
 	if (!dc->out)
 		return false;
+
 	tegra_dc_io_start(dc);
 
 	return _tegra_dc_controller_enable(dc);

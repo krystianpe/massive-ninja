@@ -34,7 +34,6 @@
 
 #define DEBUG_CPU_RESET_HANDLER	0	/* Non-zero enables debug code */
 
-
 #define PMC_SCRATCH41		0x140
 
 #define RESET_DATA(x)		((TEGRA_RESET_##x)*4)
@@ -299,6 +298,6 @@ __tegra_cpu_reset_handler_data:
 	.rept	TEGRA_RESET_DATA_SIZE
 	.long	0
 	.endr
-	.size	__tegra_cpu_reset_handler_data, . - __tegra_cpu_reset_handler_data
+	.size	__tegra_cpu_reset_handler_data, .-tegra_cpu_reset_handler_data
 	.align L1_CACHE_SHIFT
 ENTRY(__tegra_cpu_reset_handler_end)
