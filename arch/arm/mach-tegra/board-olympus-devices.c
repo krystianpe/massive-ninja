@@ -33,7 +33,6 @@ static struct platform_device *olympus_devices[] __initdata = {
 
 void __init olympus_devices_init()
 {
-
 	platform_add_devices(olympus_devices, ARRAY_SIZE(olympus_devices));
 
 }

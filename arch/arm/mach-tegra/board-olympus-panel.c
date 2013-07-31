@@ -329,7 +329,7 @@ static int olympus_panel_disable(void)
 static struct tegra_dsi_out olympus_dsi_out = {
 		.dsi_instance = 0,
 		.n_data_lanes = 2,
-		.refresh_rate = 60,
+		.refresh_rate = 64,
 		.lp_cmd_mode_freq_khz = 229500,
 		.panel_reset = true,	/* resend the init sequence on each resume */
 		.panel_reset_timeout_msec = 202,
@@ -344,17 +344,16 @@ static struct tegra_dsi_out olympus_dsi_out = {
 		.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd),
 		.dsi_suspend_cmd = dsi_suspend_cmd,
 		.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),
-		/*.phy_timing = { //nn
+		.phy_timing = { //nn
 		                .t_hsdexit_ns = 6,
 		                .t_hstrail_ns = 7,
 		                .t_hsprepr_ns = 4,
 		                .t_datzero_ns = 9,
 		                .t_clktrail_ns = 4,
 		                .t_clkpost_ns = 10,
-		                //.t_clkzero_ns = 13,
-		                .t_clkzero_ns = 10,  //WAR
+		                .t_clkzero_ns = 13,
 		                .t_tlpx_ns =  3,
-		        },*/
+		        },
 };
 
 static struct tegra_dc_out olympus_disp1_out = {
