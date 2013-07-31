@@ -178,26 +178,13 @@ __setup("androidboot.serialno=", olympus_usb_serial_num_setup);
 
 void olympus_usb_init(void)
 {
-	tegra_ehci1_device.dev.platform_data = &tegra_ehci1_utmi_pdata;
-
-	/* OTG should be the first to be registered */
 	cpcap_device_register(&cpcap_otg_device);
-
 
 	tegra_usb_phy_init(tegra_usb_phy_pdata, ARRAY_SIZE(tegra_usb_phy_pdata));
 
-   	 tegra_ehci1_device.dev.platform_data = &tegra_ehci_pdata[0];
-
-	if (usb_serial_num)
-		snprintf(android_usb_pdata.device_serial, 
-			sizeof(android_usb_pdata.device_serial), usb_serial_num);
-	else
-		snprintf(android_usb_pdata.device_serial, 
-			sizeof(android_usb_pdata.device_serial), "037c7148423ff097");
-
+    tegra_ehci1_device.dev.platform_data = &tegra_ehci_pdata[0];
 	tegra_ehci3_device.dev.platform_data = &tegra_ehci_pdata[2];
 	platform_device_register(&tegra_ehci3_device);
-
 	platform_device_register(&android_usb_platform_device);
 
 }

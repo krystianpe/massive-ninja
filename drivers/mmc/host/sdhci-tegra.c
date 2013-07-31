@@ -34,6 +34,7 @@
 #include <mach/sdhci.h>
 #include <mach/io_dpd.h>
 
+#include "sdhci.h"
 #include "sdhci-pltfm.h"
 
 #ifdef CONFIG_MACH_OLYMPUS
@@ -74,8 +75,6 @@
 
 #define SD_SEND_TUNING_PATTERN	19
 #define MAX_TAP_VALUES	256
-
-
 
 static unsigned int tegra_sdhost_min_freq;
 static unsigned int tegra_sdhost_std_freq;
@@ -122,18 +121,6 @@ struct tegra_sdhci_host {
 	bool card_present;
 	bool is_rail_enabled;
 };
-
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-static struct tegra_sdhci_hw_ops tegra_2x_sdhci_ops = {
-};
-#endif
-
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-static struct tegra_sdhci_hw_ops tegra_3x_sdhci_ops = {
-	.set_card_clock = tegra_3x_sdhci_set_card_clock,
-	.sdhost_init = tegra3_sdhci_post_reset_init,
-};
-#endif
 
 static u32 tegra_sdhci_readl(struct sdhci_host *host, int reg)
 {

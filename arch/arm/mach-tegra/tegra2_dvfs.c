@@ -185,7 +185,6 @@ static struct dvfs dvfs_init[] = {
 	 * For now, boards must ensure that the core voltage does not drop
 	 * below 1V, or that the sdmmc busses are set to 44 MHz or less.
 	 */
-
 	CORE_DVFS("sdmmc1",  -1, 1, KHZ, 44000,  52000,  52000,  52000,  52000,  52000,  52000),
 	CORE_DVFS("sdmmc2",  -1, 1, KHZ, 44000,  52000,  52000,  52000,  52000,  52000,  52000),
 	CORE_DVFS("sdmmc3",  -1, 1, KHZ, 44000,  52000,  52000,  52000,  52000,  52000,  52000),
@@ -359,10 +358,4 @@ void __init tegra_soc_init_dvfs(void)
 
 	if (tegra_dvfs_cpu_disabled)
 		tegra_dvfs_rail_disable(&tegra2_dvfs_rail_vdd_cpu);
-}
-
-void tegra_cpu_dvfs_alter(int edp_thermal_index, const cpumask_t *cpus,
-			  bool before_clk_update)
-{
-	printk(KERN_INFO "%s: fake freq altering", __func__);
 }

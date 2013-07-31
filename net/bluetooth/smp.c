@@ -28,6 +28,7 @@
 #include <linux/crypto.h>
 #include <crypto/b128ops.h>
 #include <asm/unaligned.h>
+#include <linux/scatterlist.h>
 
 #define SMP_TIMEOUT 30000 /* 30 seconds */
 

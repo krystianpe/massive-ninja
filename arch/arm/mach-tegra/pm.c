@@ -837,6 +837,7 @@ static void tegra_suspend_check_pwr_stats(void)
 int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 {
 	int err = 0;
+	u32 scratch37 = 0xDEADBEEF;
 
 	if (WARN_ON(mode <= TEGRA_SUSPEND_NONE ||
 		mode >= TEGRA_MAX_SUSPEND_MODE)) {
@@ -914,6 +915,10 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	} else if (mode == TEGRA_SUSPEND_LP1)
 		*iram_cpu_lp1_mask = 0;
 
+	/* if scratch37 was clobbered during LP1, restore it */
+	if (scratch37 != 0xDEADBEEF)
+		pmc_32kwritel(scratch37, PMC_SCRATCH37);
+
 	restore_cpu_complex(flags);
 
 	/* for platforms where the core & CPU power requests are
@@ -958,6 +963,7 @@ static int tegra_suspend_prepare(void)
 
 static void tegra_suspend_finish(void)
 {
+
 	if ((current_suspend_mode == TEGRA_SUSPEND_LP0) && tegra_deep_sleep)
 		tegra_deep_sleep(0);
 }
@@ -999,8 +1005,7 @@ static ssize_t suspend_mode_store(struct kobject *kobj,
 	if (!len)
 		goto bad_name;
 	/* TEGRA_SUSPEND_NONE not allowed as suspend state */
-	if (!(strncmp(buf, tegra_suspend_name[TEGRA_SUSPEND_NONE], len))
-		|| !(strncmp(buf, tegra_suspend_name[TEGRA_SUSPEND_LP2], len))) {
+	if (!(strncmp(buf, tegra_suspend_name[TEGRA_SUSPEND_NONE], len))) {
 		pr_info("Illegal tegra suspend state: %s\n", buf);
 		goto bad_name;
 	}
@@ -1065,9 +1070,6 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 	pdata = plat;
 	(void)reg;
 	(void)mode;
-
-	if (plat->suspend_mode == TEGRA_SUSPEND_LP2)
-		plat->suspend_mode = TEGRA_SUSPEND_LP0;
 
 #ifndef CONFIG_PM_SLEEP
 	if (plat->suspend_mode != TEGRA_SUSPEND_NONE) {
@@ -1300,3 +1302,35 @@ static int tegra_debug_uart_syscore_init(void)
 	return 0;
 }
 arch_initcall(tegra_debug_uart_syscore_init);
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static struct clk *clk_wake;
+
+static void pm_early_suspend(struct early_suspend *h)
+{
+	if (clk_wake)
+		clk_disable(clk_wake);
+	pm_qos_update_request(&awake_cpu_freq_req, PM_QOS_DEFAULT_VALUE);
+}
+
+static void pm_late_resume(struct early_suspend *h)
+{
+	if (clk_wake)
+		clk_enable(clk_wake);
+	pm_qos_update_request(&awake_cpu_freq_req, (s32)AWAKE_CPU_FREQ_MIN);
+}
+
+static struct early_suspend pm_early_suspender = {
+		.suspend = pm_early_suspend,
+		.resume = pm_late_resume,
+};
+
+static int pm_init_wake_behavior(void)
+{
+	clk_wake = tegra_get_clock_by_name("wake.sclk");
+	register_early_suspend(&pm_early_suspender);
+	return 0;
+}
+
+late_initcall(pm_init_wake_behavior);
+#endif

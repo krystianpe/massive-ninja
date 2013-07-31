@@ -2,8 +2,6 @@
  * arch/arm/mach-tegra/include/mach/dma.h
  *
  * Copyright (c) 2008-2010, NVIDIA Corporation.
- * Copyright 2013: Olympus Kernel Project
- * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -154,7 +152,6 @@ int tegra_dma_enqueue_req(struct tegra_dma_channel *ch,
 	struct tegra_dma_req *req);
 int tegra_dma_dequeue_req(struct tegra_dma_channel *ch,
 	struct tegra_dma_req *req);
-void tegra_dma_dequeue(struct tegra_dma_channel *ch);
 void tegra_dma_flush(struct tegra_dma_channel *ch);
 
 bool tegra_dma_is_req_inflight(struct tegra_dma_channel *ch,

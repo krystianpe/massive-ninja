@@ -1194,7 +1194,7 @@ static void olympus_board_resume(int lp_state, enum resume_stage stg)
 static struct tegra_suspend_platform_data olympus_suspend_data = {
 	.cpu_timer 		= 800,
 	.cpu_off_timer	= 600,
-	.suspend_mode	= TEGRA_SUSPEND_LP0,
+	.suspend_mode	= TEGRA_SUSPEND_LP1,
 	.core_timer		= 1842,
 	.core_off_timer = 31,
 	.corereq_high	= true,

@@ -31,6 +31,11 @@
 
 #include <mach/tegra_dc_ext.h>
 
+#define SUPPORT_RAW_EDID_READS
+
+/* Define to give user space full control on HPD enable/disable */
+#define SUPPORT_US_CTRL_OF_HPD
+
 #define WIN_IS_TILED(win)	((win)->flags & TEGRA_WIN_FLAG_TILED)
 #define WIN_IS_ENABLED(win)	((win)->flags & TEGRA_WIN_FLAG_ENABLED)
 
@@ -209,6 +214,8 @@ void tegra_dc_create_sysfs(struct device *dev);
 void tegra_dc_stats_enable(struct tegra_dc *dc, bool enable);
 bool tegra_dc_stats_get(struct tegra_dc *dc);
 
+void tegra_edid_get_raw_data(u8 *buf);
+
 /* defined in dc.c, used by overlay.c */
 unsigned int tegra_dc_has_multiple_dc(void);
 unsigned long tegra_dc_get_bandwidth(struct tegra_dc_win *wins[], int n);
@@ -221,5 +228,11 @@ void tegra_dc_disable_crc(struct tegra_dc *dc);
 void tegra_dc_set_out_pin_polars(struct tegra_dc *dc,
 				const struct tegra_dc_out_pin *pins,
 				const unsigned int n_pins);
+
+#ifdef SUPPORT_US_CTRL_OF_HPD
+int tegra_dc_hdmi_check_mode (const struct tegra_dc *dc, struct fb_videomode *mode);
+int tegra_dc_hdmi_check_hpd_state (struct tegra_dc *dc);
+#endif
+
 #endif
 

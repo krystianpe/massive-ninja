@@ -503,7 +503,6 @@ static void adt7461_work_func(struct work_struct *work)
 	if (data->alarm_fn) {
 		/* Therm2 line is active low */
 		data->alarm_fn(!gpio_get_value(data->irq_gpio));
-
 	}
 }
 

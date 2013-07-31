@@ -287,6 +287,5 @@ void __init platform_smp_prepare_cpus(unsigned int max_cpus)
 	   smp_init_cpus() which also means that it did not initialize the
 	   reset handler. Do it now before the secondary CPUs are started. */
 	tegra_cpu_reset_handler_init();
-
 	scu_enable(scu_base);
 }

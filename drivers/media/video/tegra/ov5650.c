@@ -1289,6 +1289,9 @@ static int ov5650_set_power(int powerLevel)
 {
 	pr_info("%s: powerLevel=%d camera mode=%d\n", __func__, powerLevel,
 			stereo_ov5650_info->camera_mode);
+// for mot
+	if (Main & stereo_ov5650_info->camera_mode)
+		set_power_helper(stereo_ov5650_info->left.pdata, powerLevel);
 
 	if (StereoCameraMode_Left & stereo_ov5650_info->camera_mode)
 		set_power_helper(stereo_ov5650_info->left.pdata, powerLevel);
@@ -1297,32 +1300,6 @@ static int ov5650_set_power(int powerLevel)
 		set_power_helper(stereo_ov5650_info->right.pdata, powerLevel);
 
 	return 0;
-}
-
-static int ov5650_get_sensor_id(struct ov5650_info *info)
-{
-	int ret = 0;
-	int i;
-	u8  bak = 0;
-
-	pr_info("%s\n", __func__);
-	if (info->sensor_data.fuse_id_size)
-		return 0;
-
-	ov5650_set_power(info, 1);
-
-	for (i = 0; i < 5; i++) {
-		ret |= ov5650_write_reg_helper(info, 0x3d00, i);
-		ret |= ov5650_read_reg_helper(info, 0x3d04,
-				&bak);
-		info->sensor_data.fuse_id[i] = bak;
-	}
-
-	if (!ret)
-		info->sensor_data.fuse_id_size = i;
-
-	ov5650_set_power(info, 0);
-	return ret;
 }
 
 static long ov5650_ioctl(struct file *file,
@@ -1399,27 +1376,10 @@ static long ov5650_ioctl(struct file *file,
 		}
 		return ov5650_set_group_hold(info, &ae);
 	}
-	case OV5650_IOCTL_GET_SENSORDATA:
-	{
-		err = ov5650_get_sensor_id(info);
-		if (err) {
-			pr_err("%s %d %d\n", __func__, __LINE__, err);
-			return err;
-		}
-		if (copy_to_user((void __user *)arg,
-				&info->sensor_data,
-				sizeof(struct ov5650_sensordata))) {
-			pr_info("%s %d\n", __func__, __LINE__);
-			return -EFAULT;
-		}
-		return 0;
-	}
-	default:{
-		printk (KERN_INFO "%s: bad command", __func__);
+	default:
 		return -EINVAL;
 	}
 	return 0;
-	}
 }
 
 static int ov5650_open(struct inode *inode, struct file *file)

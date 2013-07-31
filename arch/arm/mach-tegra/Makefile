@@ -79,6 +79,7 @@ else
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += cpu-tegra2.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpu-tegra3.o
 endif
+endif
 obj-$(CONFIG_TEGRA_PCI)                 += pcie.o
 obj-$(CONFIG_USB_SUPPORT)               += usb_phy.o
 ifeq ($(CONFIG_CPU_IDLE),y)

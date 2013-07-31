@@ -2665,8 +2665,6 @@ static void mmc_test_run(struct mmc_test_card *test, int testcase)
 
 	mmc_claim_host(test->card->host);
 
-	mmc_test_set_parameters(test);
-
 	for (i = 0;i < ARRAY_SIZE(mmc_test_cases);i++) {
 		struct mmc_test_general_result *gr;
 
@@ -2779,23 +2777,6 @@ static void mmc_test_free_result(struct mmc_card *card)
 
 static LIST_HEAD(mmc_test_file_test);
 
-static void mmc_test_usage(struct seq_file *sf)
-{
-	int i = 0;
-
-	seq_printf(sf, "\nHow to run test:"
-			"\necho <testcase> [[param1 value1].... ] > test"
-			"\nExample:: echo 1 -b 4 -c 2500000 -t 2"
-			"\n\nSupported parameters in sequence\n");
-
-	for (i = 0; i < ARRAY_SIZE(mmc_test_parameter); i++) {
-		seq_printf(sf, "Parameter%d Name:[%s] option:[%s]\n",
-			i + 1, mmc_test_parameter[i].name,
-			mmc_test_parameter[i].input);
-	}
-	seq_printf(sf, "\'-1\' passed to take default value\n\n\n");
-}
-
 static int mtf_test_show(struct seq_file *sf, void *data)
 {
 	struct mmc_card *card = (struct mmc_card *)sf->private;
@@ -2830,92 +2811,24 @@ static int mtf_test_open(struct inode *inode, struct file *file)
 	return single_open(file, mtf_test_show, inode->i_private);
 }
 
-static int mmc_test_extract_parameters(char *data_buf)
-{
-	char *running = NULL;
-	char *token = NULL;
-	const char delimiters[] = " ";
-	long value;
-	int i;
-	int set = 0;
-
-	running = data_buf;
-
-	/*Example:
-	 * echo <testcasenumber> [[param1 value1] [param1 value1]] > test
-	 * $] echo 1 > test | Execute testcase 1
-	 * $] echo 1 -c 2500000 | execute tesecase 1 and set clock to 2500000
-	 * $] echo 1 -b 4 -c 2500000 -t 2 |
-	 *	execute tesecase 1, set clock to 2500000, set bus_width 4,
-	 *	and set timing to 2
-	*/
-
-	while ((token = strsep(&running, delimiters))) {
-		if (strict_strtol(token, 10, &value)) {
-			/* [Param1 value1] combination
-			 * Compare with available param list
-			 */
-			for (i = 0; i < ARRAY_SIZE(mmc_test_parameter); i++) {
-				if (!strcmp(mmc_test_parameter[i].input,
-						token)) {
-					/* Valid Option, extract following
-					 * value and save it
-					 */
-					token = strsep(&running, delimiters);
-					if (strict_strtol(token, 10,
-					    &(mmc_test_parameter[i].value))) {
-
-						printk(KERN_ERR "wrong parameter value\n");
-						return -EINVAL;
-					} else {
-						break;
-					}
-				}
-			}
-			if (i == ARRAY_SIZE(mmc_test_parameter)) {
-				printk(KERN_ERR "uknown mmc_test option\n");
-				return -EINVAL;
-			}
-		} else {
-			/* Testcase number */
-			if (!set) {
-				mmc_test_parameter[0].value = value;
-				set = 1;
-			} else {
-				printk(KERN_ERR "invalid options");
-				return -EINVAL;
-			}
-		}
-	}
-	return 0;
-}
-
 static ssize_t mtf_test_write(struct file *file, const char __user *buf,
 	size_t count, loff_t *pos)
 {
 	struct seq_file *sf = (struct seq_file *)file->private_data;
 	struct mmc_card *card = (struct mmc_card *)sf->private;
 	struct mmc_test_card *test;
-	char *data_buf = NULL;
+	char lbuf[12];
 	long testcase;
 
-	data_buf = kzalloc(count, GFP_KERNEL);
-	if (data_buf == NULL)
-		return -ENOMEM;
+	if (count >= sizeof(lbuf))
+		return -EINVAL;
 
-	if (copy_from_user(data_buf, buf, count)) {
-		kfree(data_buf);
+	if (copy_from_user(lbuf, buf, count))
 		return -EFAULT;
-	}
-	data_buf[strlen(data_buf) - 1] = '\0';
-	if (mmc_test_extract_parameters(data_buf)) {
-		mmc_test_usage(sf);
-		return -EFAULT;
-	}
+	lbuf[count] = '\0';
 
-	kfree(data_buf);
-
-	testcase = mmc_test_parameter[0].value;
+	if (strict_strtol(lbuf, 10, &testcase))
+		return -EINVAL;
 
 	test = kzalloc(sizeof(struct mmc_test_card), GFP_KERNEL);
 	if (!test)

@@ -1429,12 +1429,22 @@ void tegra_dc_setup_clk(struct tegra_dc *dc, struct clk *clk)
 
 		/* needs to match tegra_dc_hdmi_supported_modes[]
 		and tegra_pll_d_freq_table[] */
-		if (dc->mode.pclk > 70000000)
-			rate = 594000000;
-		else if (dc->mode.pclk > 25200000)
+		if (dc->mode.h_active == 1366 && dc->mode.v_active == 768 &&
+			dc->mode.pclk == 72004000)
+		{
+			parent_clk =
+				clk_get_sys(NULL, dc->out->parent_clk ? : "pll_p");
+			base_clk = clk_get_parent(parent_clk);
 			rate = 216000000;
-		else
-			rate = 504000000;
+		} else
+		{
+			if (dc->mode.pclk > 70000000)
+				rate = 594000000;
+			else if (dc->mode.pclk > 25200000)
+				rate = 216000000;
+			else
+				rate = 504000000;
+		}
 
 		if (rate != clk_get_rate(base_clk))
 			clk_set_rate(base_clk, rate);
@@ -1709,6 +1719,9 @@ static int tegra_dc_program_mode(struct tegra_dc *dc, struct tegra_dc_mode *mode
 			 (mode->h_active << 16) | mode->v_active);
 #endif
 
+	tegra_dc_writel(dc, GENERAL_UPDATE, DC_CMD_STATE_CONTROL);
+	tegra_dc_writel(dc, GENERAL_ACT_REQ, DC_CMD_STATE_CONTROL);
+
 	return 0;
 }
 
@@ -1731,6 +1744,14 @@ int tegra_dc_set_fb_mode(struct tegra_dc *dc,
 	if (!fbmode->pixclock)
 		return -EINVAL;
 
+#ifdef SUPPORT_US_CTRL_OF_HPD
+	if (dc->out->type == TEGRA_DC_OUT_HDMI) {
+		int hpd_state = tegra_dc_hdmi_check_hpd_state (dc);
+		int valid_mode = tegra_dc_hdmi_check_mode (dc, fbmode);
+		if (!hpd_state || !valid_mode)
+			return 0;
+		}
+#endif
 	mode.pclk = PICOS2KHZ(fbmode->pixclock) * 1000;
 	mode.h_sync_width = fbmode->hsync_len;
 	mode.v_sync_width = fbmode->vsync_len;
@@ -1748,11 +1769,16 @@ int tegra_dc_set_fb_mode(struct tegra_dc *dc,
 	} else {
 		calc_ref_to_sync(&mode);
 	}
+if (mode.h_active != 1366 ||  mode.v_active != 768) {
 	if (!check_ref_to_sync(&mode)) {
 		dev_err(&dc->ndev->dev,
 				"Display timing doesn't meet restrictions.\n");
+		dev_err(&dc->ndev->dev, "mode %dx%d mode pclk=%d fbmode pclk=%d "
+			"selection failed\n", mode.h_active, mode.v_active,
+			mode.pclk,fbmode->pixclock);
 		return -EINVAL;
 	}
+}
 	dev_info(&dc->ndev->dev, "Using mode %dx%d pclk=%d href=%d vref=%d\n",
 		mode.h_active, mode.v_active, mode.pclk,
 		mode.h_ref_to_sync, mode.v_ref_to_sync
@@ -2077,8 +2103,10 @@ static void tegra_dc_underflow_handler(struct tegra_dc *dc)
 			dc->windows[i].underflows++;
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	#ifdef ENABLE_UNDERFLOW
 			if (dc->windows[i].underflows > 4)
 				schedule_work(&dc->reset_work);
+	#endif
 #endif
 		} else {
 			dc->windows[i].underflows = 0;
@@ -2815,7 +2843,9 @@ static int tegra_dc_probe(struct nvhost_device *ndev)
 	init_completion(&dc->frame_end_complete);
 	init_waitqueue_head(&dc->wq);
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	INIT_WORK(&dc->reset_work, tegra_dc_reset_worker);
+	#ifdef ENABLE_UNDERFLOW
+		INIT_WORK(&dc->reset_work, tegra_dc_reset_worker);
+	#endif
 #endif
 	INIT_WORK(&dc->vblank_work, tegra_dc_vblank);
 	INIT_DELAYED_WORK(&dc->underflow_work, tegra_dc_underflow_worker);

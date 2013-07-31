@@ -721,14 +721,13 @@ void tegra_move_framebuffer(unsigned long to, unsigned long from,
 	struct page *page;
 	void __iomem *to_io;
 	void *from_virt;
-	unsigned long i, j, p, p2;
-	unsigned int r, g, b;
+	unsigned long i;
 
 	BUG_ON(PAGE_ALIGN((unsigned long)to) != (unsigned long)to);
 	BUG_ON(PAGE_ALIGN(from) != from);
 	BUG_ON(PAGE_ALIGN(size) != size);
 
-	to_io = ioremap(to, size*2);
+	to_io = ioremap(to, size);
 	if (!to_io) {
 		pr_err("%s: Failed to map target framebuffer\n", __func__);
 		return;
@@ -738,17 +737,7 @@ void tegra_move_framebuffer(unsigned long to, unsigned long from,
 		for (i = 0 ; i < size; i += PAGE_SIZE) {
 			page = phys_to_page(from + i);
 			from_virt = kmap(page);
-			for (j = 0; j < PAGE_SIZE; j += 2) {
-				p = *((unsigned long *)(from_virt + j));
-				r = (p>>11) & 0x1F;
-				g = (p>>5) & 0x3F;
-				b = (p & 0x001F);
-				r = (r<<3) | (r>>2);
-				g = (g<<2) | (g>>4);
-				b = (b<<3) | (b>>2);
-				p2= (b<<16) | (g<<8) | r;
-				memcpy(to_io+(i+j)*2,&p2,sizeof(p2));
-			}
+			memcpy(to_io + i, from_virt, PAGE_SIZE);
 			kunmap(page);
 		}
 	} else {
