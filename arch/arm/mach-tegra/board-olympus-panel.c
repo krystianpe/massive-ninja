@@ -329,7 +329,7 @@ static int olympus_panel_disable(void)
 static struct tegra_dsi_out olympus_dsi_out = {
 		.dsi_instance = 0,
 		.n_data_lanes = 2,
-		.refresh_rate = 64,
+		.refresh_rate = 60,
 		.lp_cmd_mode_freq_khz = 229500,
 		.panel_reset = true,	/* resend the init sequence on each resume */
 		.panel_reset_timeout_msec = 202,
@@ -344,7 +344,7 @@ static struct tegra_dsi_out olympus_dsi_out = {
 		.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd),
 		.dsi_suspend_cmd = dsi_suspend_cmd,
 		.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),
-		.phy_timing = { //nn
+		/*.phy_timing = { //nn
 		                .t_hsdexit_ns = 6,
 		                .t_hstrail_ns = 7,
 		                .t_hsprepr_ns = 4,
@@ -354,7 +354,7 @@ static struct tegra_dsi_out olympus_dsi_out = {
 		                //.t_clkzero_ns = 13,
 		                .t_clkzero_ns = 10,  //WAR
 		                .t_tlpx_ns =  3,
-		        },
+		        },*/
 };
 
 static struct tegra_dc_out olympus_disp1_out = {
@@ -581,8 +581,8 @@ int __init olympus_panel_init(void)
 
 	// Lets check if we have buggy tegra
 	if ((s_MotorolaDispInfo >> 31) & 0x01) {
-		//olympus_disp1_out.modes  = olympus_panel_modes_for_0x8;
-		//olympus_disp1_out.n_modes = ARRAY_SIZE(olympus_panel_modes_for_0x8);
+		olympus_disp1_out.modes  = olympus_panel_modes_for_0x8;
+		olympus_disp1_out.n_modes = ARRAY_SIZE(olympus_panel_modes_for_0x8);
 	}
 
 	olympus_panel_setup_dc();
