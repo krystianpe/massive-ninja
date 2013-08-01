@@ -47,6 +47,7 @@
 #include "devices.h"
 #include "gpio-names.h"
 #include "fuse.h"
+//#include "tegra2_host1x_devices.h"
 
 #define HDMI_HPD_GPIO TEGRA_GPIO_PN7
 #define DSI_PANEL_RESET 1
@@ -344,16 +345,6 @@ static struct tegra_dsi_out olympus_dsi_out = {
 		.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd),
 		.dsi_suspend_cmd = dsi_suspend_cmd,
 		.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),
-		/*.phy_timing = { //nn
-		                .t_hsdexit_ns = 6,
-		                .t_hstrail_ns = 7,
-		                .t_hsprepare_ns = 4,
-		                .t_datzero_ns = 9,
-		                .t_clktrail_ns = 4,
-		                .t_clkpost_ns = 10,
-		                .t_clkzero_ns = 13,
-		                .t_tlpx_ns =  3,
-		        },*/
 };
 
 static struct tegra_dc_out olympus_disp1_out = {
@@ -520,7 +511,6 @@ static struct platform_device *olympus_gfx_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_NVMAP)
 	&olympus_nvmap_device,
 #endif
-	&tegra_grhost_device,
 	&tegra_gart_device,
 	&tegra_avp_device,
 	&olympus_disp1_backlight_device,
@@ -597,6 +587,18 @@ int __init olympus_panel_init(void)
 	olympus_carveouts[1].base = tegra_carveout_start;
 	olympus_carveouts[1].size = tegra_carveout_size;
 #endif
+
+#ifdef CONFIG_TEGRA_GRHOST
+      err = nvhost_device_register(&tegra_grhost_device);
+      if (err)
+              return err;
+#endif
+/*
+#ifdef CONFIG_TEGRA_GRHOST
+	err = tegra2_register_host1x_devices();
+	if (err)
+		return err;
+#endif*/
 
 	err = platform_add_devices(olympus_gfx_devices,
 				   ARRAY_SIZE(olympus_gfx_devices));
