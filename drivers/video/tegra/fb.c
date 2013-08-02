@@ -73,16 +73,19 @@ static int tegra_fb_check_var(struct fb_var_screeninfo *var,
 	    info->screen_size)
 		return -EINVAL;
 
+#ifndef CONFIG_MACH_OLYMPUS
 	/* Apply mode filter for HDMI only -LVDS supports only fix mode */
 	if (ops && ops->mode_filter) {
 
 		fb_var_to_videomode(&mode, var);
+
 		if (!ops->mode_filter(dc, &mode))
 			return -EINVAL;
 
 		/* Mode filter may have modified the mode */
 		fb_videomode_to_var(var, &mode);
 	}
+#endif
 
 	/* Double yres_virtual to allow double buffering through pan_display */
 	var->yres_virtual = var->yres * 2;
