@@ -3043,7 +3043,7 @@ static int tegra_dc_probe(struct nvhost_device *ndev,
 	init_completion(&dc->frame_end_complete);
 	init_waitqueue_head(&dc->wq);
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-		INIT_WORK(&dc->reset_work, tegra_dc_reset_worker);
+	INIT_WORK(&dc->reset_work, tegra_dc_reset_worker);
 #endif
 	INIT_WORK(&dc->vblank_work, tegra_dc_vblank);
 	INIT_DELAYED_WORK(&dc->underflow_work, tegra_dc_underflow_worker);
