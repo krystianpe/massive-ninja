@@ -227,8 +227,7 @@ static void show_channel_gather(struct output *o, u32 addr,
 #endif
 }
 
-
-void show_channel_gathers(struct output *o, struct nvhost_cdma *cdma)
+static void show_channel_gathers(struct output *o, struct nvhost_cdma *cdma)
 {
 	struct nvhost_job *job;
 
