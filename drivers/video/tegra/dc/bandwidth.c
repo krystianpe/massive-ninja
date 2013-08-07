@@ -55,7 +55,6 @@ static void tegra_dc_set_latency_allowance(struct tegra_dc *dc,
 	BUG_ON(dc->ndev->id >= ARRAY_SIZE(la_id_tab));
 	BUG_ON(dc->ndev->id >= ARRAY_SIZE(vfilter_tab));
 	BUG_ON(w->idx >= ARRAY_SIZE(*la_id_tab));
-
 	bw = max(w->bandwidth, w->new_bandwidth);
 
 	/* tegra_dc_get_bandwidth() treats V filter windows as double
@@ -229,9 +228,16 @@ void tegra_dc_program_bandwidth(struct tegra_dc *dc)
 		/* going from 0 to non-zero */
 		if (!dc->emc_clk_rate && !tegra_is_clk_enabled(dc->emc_clk))
 			clk_enable(dc->emc_clk);
-
+		/*
+		 * Makes lapdock screen clock too high (needs checking)
+		 */
+#ifdef CONFIG_MACH_OLYMPUS
+		dc->emc_clk_rate = dc->new_emc_clk_rate;
+		clk_set_rate(dc->emc_clk, dc->emc_clk_rate);
+#else
 		clk_set_rate(dc->emc_clk,
 			max(dc->emc_clk_rate, dc->new_emc_clk_rate));
+#endif
 		dc->emc_clk_rate = dc->new_emc_clk_rate;
 
 		if (!dc->new_emc_clk_rate) /* going from non-zero to 0 */

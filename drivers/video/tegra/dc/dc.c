@@ -2383,13 +2383,15 @@ static bool _tegra_dc_enable(struct tegra_dc *dc)
 		case TEGRA_DC_OUT_HDMI:
 		/* DC enable called but no videomode is loaded.
 		     Check if HDMI is connected, then set fallback mdoe */
-		if (tegra_dc_hpd(dc)) {
+#ifndef CONFIG_MACH_OLYMPUS
+			if (tegra_dc_hpd(dc)) {
 			if (_tegra_dc_set_default_videomode(dc))
 				return false;
 		} else
 			return false;
 
 		break;
+#endif
 
 		/* Do nothing for other outputs for now */
 		case TEGRA_DC_OUT_RGB:

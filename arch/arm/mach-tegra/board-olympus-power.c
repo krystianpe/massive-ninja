@@ -1090,7 +1090,7 @@ static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
 				tegra_pinmux_set_tristate(104/*TEGRA_PINGROUP_UCA*/, TEGRA_TRI_TRISTATE);
 				tegra_pinmux_set_tristate(105/*TEGRA_PINGROUP_UCB*/, TEGRA_TRI_TRISTATE);
 				tegra_pinmux_set_pullupdown(108/*TEGRA_PINGROUP_DDRC*/, TEGRA_PUPD_PULL_UP);
-#endif
+
 				printk(KERN_INFO "%s: TEGRA_GPIO_PM2 = 0",__func__);
 				gpio_set_value(TEGRA_GPIO_PM2, 0);
 
@@ -1102,7 +1102,7 @@ static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
 
 				printk(KERN_INFO "%s: TEGRA_GPIO_PM5 disabling",__func__);
 				tegra_gpio_disable(TEGRA_GPIO_PM5);
-
+#endif
 //				printk(KERN_INFO "%s: TEGRA_GPIO_PU1 = 0",__func__);
 //				gpio_set_value(TEGRA_GPIO_PU1, 0);
 
@@ -1158,7 +1158,7 @@ static void olympus_board_resume(int lp_state, enum resume_stage stg)
 		tegra_pinmux_set_tristate(104/*TEGRA_PINGROUP_UCA*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(105/*TEGRA_PINGROUP_UCB*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_pullupdown(108/*TEGRA_PINGROUP_DDRC*/, TEGRA_PUPD_NORMAL);
-#endif
+
 		printk(KERN_INFO "%s: TEGRA_GPIO_PM2 = 1",__func__);
 		gpio_set_value(TEGRA_GPIO_PM2, 1);
 
@@ -1170,7 +1170,7 @@ static void olympus_board_resume(int lp_state, enum resume_stage stg)
 
 		printk(KERN_INFO "%s: TEGRA_GPIO_PM5 disabling",__func__);
 		tegra_gpio_enable(TEGRA_GPIO_PM5);
-
+#endif
 /*		printk(KERN_INFO "%s: TEGRA_GPIO_PU1 = 1",__func__);
 		gpio_set_value(TEGRA_GPIO_PU1, 1);
 
