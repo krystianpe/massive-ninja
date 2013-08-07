@@ -231,13 +231,13 @@ void tegra_dc_program_bandwidth(struct tegra_dc *dc)
 		/*
 		 * Makes lapdock screen clock too high (needs checking)
 		 */
-#ifdef CONFIG_MACH_OLYMPUS
-		dc->emc_clk_rate = dc->new_emc_clk_rate;
-		clk_set_rate(dc->emc_clk, dc->emc_clk_rate);
-#else
+//#ifdef CONFIG_MACH_OLYMPUS
+		//dc->emc_clk_rate = dc->new_emc_clk_rate;
+		//clk_set_rate(dc->emc_clk, dc->emc_clk_rate);
+//#else
 		clk_set_rate(dc->emc_clk,
 			max(dc->emc_clk_rate, dc->new_emc_clk_rate));
-#endif
+//#endif
 		dc->emc_clk_rate = dc->new_emc_clk_rate;
 
 		/* going from non-zero to 0 */

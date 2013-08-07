@@ -47,7 +47,7 @@
 #include "devices.h"
 #include "gpio-names.h"
 #include "fuse.h"
-//#include "tegra2_host1x_devices.h"
+#include "tegra2_host1x_devices.h"
 
 #define HDMI_HPD_GPIO TEGRA_GPIO_PN7
 #define DSI_PANEL_RESET 1
@@ -588,16 +588,10 @@ int __init olympus_panel_init(void)
 #endif
 
 #ifdef CONFIG_TEGRA_GRHOST
-      err = nvhost_device_register(&tegra_grhost_device);
-      if (err)
-              return err;
-#endif
-/*
-#ifdef CONFIG_TEGRA_GRHOST
 	err = tegra2_register_host1x_devices();
 	if (err)
 		return err;
-#endif*/
+#endif
 
 	err = platform_add_devices(olympus_gfx_devices,
 				   ARRAY_SIZE(olympus_gfx_devices));
