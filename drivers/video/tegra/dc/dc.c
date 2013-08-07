@@ -1536,7 +1536,6 @@ int tegra_dc_set_fb_mode(struct tegra_dc *dc,
 
 	if (!fbmode->pixclock)
 		return -EINVAL;
-
 #ifdef SUPPORT_US_CTRL_OF_HPD
 	if (dc->out->type == TEGRA_DC_OUT_HDMI) {
 		int hpd_state = tegra_dc_hdmi_check_hpd_state (dc);
@@ -1892,6 +1891,7 @@ static void tegra_dc_underflow_handler(struct tegra_dc *dc)
 			dc->windows[i].underflows++;
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	#ifdef ENABLE_UNDERFLOW
 			if (dc->windows[i].underflows > 4) {
 				schedule_work(&dc->reset_work);
 				/* reset counter */
@@ -1900,6 +1900,7 @@ static void tegra_dc_underflow_handler(struct tegra_dc *dc)
 						"window %c\n",
 						dc->ndev->name, (65 + i));
 			}
+	#endif
 #endif
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 			if (dc->windows[i].underflows > 4) {
@@ -2718,7 +2719,9 @@ static int tegra_dc_probe(struct nvhost_device *ndev,
 	init_completion(&dc->frame_end_complete);
 	init_waitqueue_head(&dc->wq);
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	INIT_WORK(&dc->reset_work, tegra_dc_reset_worker);
+	#ifdef ENABLE_UNDERFLOW
+		INIT_WORK(&dc->reset_work, tegra_dc_reset_worker);
+	#endif
 #endif
 	INIT_WORK(&dc->vblank_work, tegra_dc_vblank);
 	INIT_DELAYED_WORK(&dc->underflow_work, tegra_dc_underflow_worker);
@@ -2772,7 +2775,11 @@ static int tegra_dc_probe(struct nvhost_device *ndev,
 	mutex_unlock(&dc->lock);
 
 	/* interrupt handler must be registered before tegra_fb_register() */
+#ifdef CONFIG_MACH_OLYMPUS
+	if (request_irq(irq, tegra_dc_irq, IRQF_DISABLED,
+#else
 	if (request_irq(irq, tegra_dc_irq, 0,
+#endif
 			dev_name(&ndev->dev), dc)) {
 		dev_err(&ndev->dev, "request_irq %d failed\n", irq);
 		ret = -EBUSY;

@@ -188,8 +188,29 @@ struct platform_device *tegra_sdhci_boot_device = NULL;
 void __init olympus_sdhci_init(void)
 {
 	int i;
+	struct clk *clk;
 
 	printk(KERN_INFO "pICS_%s: Starting...",__func__);
+
+	 /* Set the SDMMC1 (wifi) tap delay to 6.  This value is determined
+	  * based on propagation delay on the PCB traces. */
+	clk = clk_get_sys("sdhci-tegra.0", NULL);
+	if (!IS_ERR(clk)) {
+	    tegra_sdmmc_tap_delay(clk, 6);
+	    clk_put(clk);
+	} else {
+	    pr_err("Failed to set wifi sdmmc tap delay\n");
+	}
+
+	/* Set the SDMMC3 (external sd card) tap delay to 5.  This value is determined
+	* based on propagation delay on the PCB traces. */
+	clk = clk_get_sys("sdhci-tegra.2", NULL);
+	if (!IS_ERR(clk)) {
+	    tegra_sdmmc_tap_delay(clk, 5);
+	    clk_put(clk);
+	} else {
+	    pr_err("Failed to set external sd card sdmmc tap delay\n");
+	}
 
 	tegra_gpio_enable(OLYMPUS_EXT_SDCARD_DETECT);
 

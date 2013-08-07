@@ -460,15 +460,14 @@ static struct tegra_dc_out olympus_disp2_out = {
 
 static struct tegra_fb_data olympus_disp2_fb_data = {
 		.win		= 0,
-		.xres		= 1366,
-		.yres		= 768,
+		.xres		= 800,
+		.yres		= 480,
 		.bits_per_pixel	= 32,
 		.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
 
 static struct tegra_dc_platform_data olympus_disp2_pdata = {
 	.flags			= 0,
-	.emc_clk_rate	= ULONG_MAX,
 	.default_out	= &olympus_disp2_out,
 	.fb				= &olympus_disp2_fb_data,
 };
