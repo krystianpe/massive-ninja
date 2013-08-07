@@ -131,6 +131,8 @@ struct nvavp_info {
 	/* client for driver allocations, persistent */
 	struct nvmap_client		*nvmap;
 
+	bool				pending;
+
 	struct nvavp_channel		channel_info[NVAVP_NUM_CHANNELS];
 
 	struct nvhost_syncpt		*nvhost_syncpt;
@@ -203,8 +205,8 @@ static void nvavp_set_channel_control_area(struct nvavp_info *nvavp, int channel
 	writel(0x0, &control->get);
 
 	pr_debug("nvavp_set_channel_control_area for channel_id (%d):\
-		control->put (0x%x) control->get (0x%x)\n",
-		channel_id, &control->put, &control->get);
+		control->put (0x%08x) control->get (0x%08x)\n",
+		channel_id, (u32) &control->put, (u32) &control->get);
 
 	/* enable avp VDE clock control and disable iram clock gating */
 	writel(0x0, &control->idle_clk_enable);
@@ -239,26 +241,29 @@ static struct clk *nvavp_clk_get(struct nvavp_info *nvavp, int id)
 	return NULL;
 }
 
-static void nvavp_clk_ctrl(struct nvavp_info *nvavp, u32 clk_en)
+static void nvavp_clks_enable(struct nvavp_info *nvavp)
 {
-	if (clk_en && !nvavp->clk_enabled) {
+	if (nvavp->clk_enabled++ == 0) {
 		nvhost_module_busy(nvhost_get_host(nvavp->nvhost_dev)->dev);
 		clk_enable(nvavp->bsev_clk);
 		clk_enable(nvavp->vde_clk);
 		clk_set_rate(nvavp->emc_clk, nvavp->emc_clk_rate);
 		clk_set_rate(nvavp->sclk, nvavp->sclk_rate);
-		nvavp->clk_enabled = 1;
 		dev_dbg(&nvavp->nvhost_dev->dev, "%s: setting sclk to %lu\n",
 				__func__, nvavp->sclk_rate);
 		dev_dbg(&nvavp->nvhost_dev->dev, "%s: setting emc_clk to %lu\n",
 				__func__, nvavp->emc_clk_rate);
-	} else if (!clk_en && nvavp->clk_enabled) {
+	}
+}
+
+static void nvavp_clks_disable(struct nvavp_info *nvavp)
+{
+	if (--nvavp->clk_enabled == 0) {
 		clk_disable(nvavp->bsev_clk);
 		clk_disable(nvavp->vde_clk);
 		clk_set_rate(nvavp->emc_clk, 0);
 		clk_set_rate(nvavp->sclk, 0);
 		nvhost_module_idle(nvhost_get_host(nvavp->nvhost_dev)->dev);
-		nvavp->clk_enabled = 0;
 		dev_dbg(&nvavp->nvhost_dev->dev, "%s: resetting emc_clk "
 				"and sclk\n", __func__);
 	}
@@ -279,10 +284,15 @@ static void clock_disable_handler(struct work_struct *work)
 
 	nvavp = container_of(work, struct nvavp_info,
 			    clock_disable_work);
-
 	channel_info = nvavp_get_channel_info(nvavp, NVAVP_VIDEO_CHANNEL);
+
 	mutex_lock(&channel_info->pushbuffer_lock);
-	nvavp_clk_ctrl(nvavp, !nvavp_check_idle(nvavp));
+	mutex_lock(&nvavp->open_lock);
+	if (nvavp_check_idle(nvavp) && nvavp->pending) {
+		nvavp->pending = false;
+		nvavp_clks_disable(nvavp);
+	}
+	mutex_unlock(&nvavp->open_lock);
 	mutex_unlock(&channel_info->pushbuffer_lock);
 }
 
@@ -391,27 +401,29 @@ static int nvavp_reset_avp(struct nvavp_info *nvavp, unsigned long reset_addr)
 
 static void nvavp_halt_vde(struct nvavp_info *nvavp)
 {
-	if (nvavp->clk_enabled) {
-		tegra_periph_reset_assert(nvavp->bsev_clk);
-		clk_disable(nvavp->bsev_clk);
-		tegra_periph_reset_assert(nvavp->vde_clk);
-		clk_disable(nvavp->vde_clk);
-		nvhost_module_idle(nvhost_get_host(nvavp->nvhost_dev)->dev);
-		nvavp->clk_enabled = 0;
+	if (nvavp->clk_enabled && !nvavp->pending)
+		BUG();
+
+	if (nvavp->pending) {
+		nvavp_clks_disable(nvavp);
+		nvavp->pending = false;
 	}
+
+	tegra_periph_reset_assert(nvavp->bsev_clk);
+	tegra_periph_reset_assert(nvavp->vde_clk);
 }
 
 static int nvavp_reset_vde(struct nvavp_info *nvavp)
 {
-	if (!nvavp->clk_enabled)
-		nvhost_module_busy(nvhost_get_host(nvavp->nvhost_dev)->dev);
+	if (nvavp->clk_enabled)
+		BUG();
 
-	clk_enable(nvavp->bsev_clk);
+	nvavp_clks_enable(nvavp);
+
 	tegra_periph_reset_assert(nvavp->bsev_clk);
 	udelay(2);
 	tegra_periph_reset_deassert(nvavp->bsev_clk);
 
-	clk_enable(nvavp->vde_clk);
 	tegra_periph_reset_assert(nvavp->vde_clk);
 	udelay(2);
 	tegra_periph_reset_deassert(nvavp->vde_clk);
@@ -423,7 +435,8 @@ static int nvavp_reset_vde(struct nvavp_info *nvavp)
 	 */
 	clk_set_rate(nvavp->vde_clk, ULONG_MAX);
 
-	nvavp->clk_enabled = 1;
+	nvavp_clks_disable(nvavp);
+
 	return 0;
 }
 
@@ -535,7 +548,7 @@ static int nvavp_pushbuffer_update(struct nvavp_info *nvavp, u32 phys_addr,
 	control = channel_info->os_control;
 	pr_debug("nvavp_pushbuffer_update for channel_id (%d):\
 		control->put (0x%x) control->get (0x%x)\n",
-		channel_id, &control->put, &control->get);
+		channel_id, (u32) &control->put, (u32) &control->get);
 
 	mutex_lock(&channel_info->pushbuffer_lock);
 
@@ -592,8 +605,14 @@ static int nvavp_pushbuffer_update(struct nvavp_info *nvavp, u32 phys_addr,
 	}
 
 	/* enable clocks to VDE/BSEV */
-	if (IS_VIDEO_CHANNEL_ID(channel_id))
-		nvavp_clk_ctrl(nvavp, 1);
+	if (IS_VIDEO_CHANNEL_ID(channel_id)) {
+		mutex_lock(&nvavp->open_lock);
+		if (!nvavp->pending) {
+			nvavp_clks_enable(nvavp);
+			nvavp->pending = true;
+		}
+		mutex_unlock(&nvavp->open_lock);
+	}
 
 	/* update put pointer */
 	channel_info->pushbuf_index = (channel_info->pushbuf_index + wordcount)&
@@ -1214,14 +1233,14 @@ static int nvavp_force_clock_stay_on_ioctl(struct file *filp, unsigned int cmd,
 	struct nvavp_clock_stay_on_state_args clock;
 
 	if (copy_from_user(&clock, (void __user *)arg,
-			sizeof(struct nvavp_clock_stay_on_state_args)))
+			   sizeof(struct nvavp_clock_stay_on_state_args)))
 		return -EFAULT;
 
 	dev_dbg(&nvavp->nvhost_dev->dev, "%s: state=%d\n",
 		__func__, clock.state);
 
 	if (clock.state != NVAVP_CLOCK_STAY_ON_DISABLED &&
-		clock.state !=  NVAVP_CLOCK_STAY_ON_ENABLED) {
+	    clock.state !=  NVAVP_CLOCK_STAY_ON_ENABLED) {
 		dev_err(&nvavp->nvhost_dev->dev, "%s: invalid argument=%d\n",
 			__func__, clock.state);
 		return -EINVAL;
@@ -1659,7 +1678,7 @@ static int tegra_nvavp_suspend(struct nvhost_device *ndev, pm_message_t state)
 	mutex_lock(&nvavp->open_lock);
 
 	if (nvavp->refcount) {
-		if (nvavp_check_idle(nvavp))
+		if (!nvavp->clk_enabled)
 			nvavp_uninit(nvavp);
 		else
 			ret = -EBUSY;
