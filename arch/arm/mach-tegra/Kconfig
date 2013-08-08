@@ -514,8 +514,7 @@ config TEGRA_SKIN_THROTTLE
 	default n
 	help
 	  Enable throttling to control the temperature of the skin/case
-	  of the device.
-endif
+	  of the device
 
 config TEGRA_DC_USE_HW_BPP
 	bool "Default Bits Per Pixel value from tegra DC hardware"
@@ -525,4 +524,3 @@ config TEGRA_DC_USE_HW_BPP
 	  Programs platform data to inform DC driver to use current
 	  hardware value for bits per pixel setting.  Useful for
           preserving and displaying framebuffer content from bootloader.
->>>>>>> 2b7077e... video: tegra: cardhu: Default bpp from hardware
