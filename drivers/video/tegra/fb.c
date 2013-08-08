@@ -164,9 +164,11 @@ static int tegra_fb_set_par(struct fb_info *info)
 					FB_VMODE_STEREO_LEFT_RIGHT);
 #endif
 		tegra_dc_set_fb_mode(tegra_fb->win->dc, info->mode, stereo);
+#ifndef CONFIG_MACH_OLYMPUS
 		/* Reflect the mode change on dc */
 		tegra_dc_disable(tegra_fb->win->dc);
 		tegra_dc_enable(tegra_fb->win->dc);
+#endif
 
 		tegra_fb->win->w.full = dfixed_const(info->mode->xres);
 		tegra_fb->win->h.full = dfixed_const(info->mode->yres);
