@@ -44,15 +44,12 @@
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>
 #include <linux/workqueue.h>
-#include <linux/pm_qos_params.h>
 
 #include <asm/byteorder.h>
 #include <asm/io.h>
 #include <asm/system.h>
 #include <asm/unaligned.h>
 #include <asm/dma.h>
-
-#include <mach/iomap.h>
 
 #include "fsl_usb2_udc.h"
 
@@ -65,8 +62,6 @@
 #define	DRIVER_VERSION	"Apr 20, 2007"
 
 #define	DMA_ADDR_INVALID	(~(dma_addr_t)0)
-#define	STATUS_BUFFER_SIZE	8
-#define USB1_PREFETCH_ID	6
 
 #ifdef CONFIG_ARCH_TEGRA
 static const char driver_name[] = "fsl-tegra-udc";
@@ -84,16 +79,9 @@ static struct usb_sys_interface *usb_sys_regs;
 #define USB_CHARGING_CURRENT_LIMIT_MA 1800
 /* 1 sec wait time for charger detection after vbus is detected */
 #define USB_CHARGER_DETECTION_WAIT_TIME_MS 1000
-#define BOOST_TRIGGER_SIZE 4096
 
 /* it is initialized in probe()  */
 static struct fsl_udc *udc_controller = NULL;
-
-#ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
-static struct pm_qos_request_list boost_cpu_freq_req;
-static u32 ep_queue_request_count;
-static u8 boost_cpufreq_work_flag;
-#endif
 
 static const struct usb_endpoint_descriptor
 fsl_ep0_desc = {
@@ -271,13 +259,7 @@ static void done(struct fsl_ep *ep, struct fsl_req *req, int status)
 			req->req.actual, req->req.length);
 
 	ep->stopped = 1;
-#ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
-	if (req->req.complete && req->req.length >= BOOST_TRIGGER_SIZE) {
-		ep_queue_request_count--;
-		if (!ep_queue_request_count)
-			schedule_work(&udc->boost_cpufreq_work);
-	}
-#endif
+
 	spin_unlock(&ep->udc->lock);
 	/* complete() is from gadget layer,
 	 * eg fsg->bulk_in_complete() */
@@ -970,10 +952,6 @@ static int fsl_req_to_dtd(struct fsl_req *req, gfp_t gfp_flags)
 	struct ep_td_struct	*last_dtd = NULL, *dtd;
 	dma_addr_t dma;
 
-#if defined(CONFIG_ARCH_TEGRA)
-	fsl_udc_dtd_prepare();
-#endif
-
 	do {
 		dtd = fsl_build_dtd(req, &count, &dma, &is_last, gfp_flags);
 		if (dtd == NULL)
@@ -1030,13 +1008,7 @@ fsl_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 			return -EMSGSIZE;
 		}
 	}
-#ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
-	if (req->req.length >= BOOST_TRIGGER_SIZE) {
-		ep_queue_request_count++;
-		if (ep_queue_request_count && boost_cpufreq_work_flag)
-			schedule_work(&udc->boost_cpufreq_work);
-	}
-#endif
+
 	dir = ep_is_in(ep) ? DMA_TO_DEVICE : DMA_FROM_DEVICE;
 
 	spin_unlock_irqrestore(&udc->lock, flags);
@@ -1377,14 +1349,6 @@ static int can_pullup(struct fsl_udc *udc)
 	return udc->driver && udc->softconnect && udc->vbus_active;
 }
 
-static int fsl_set_selfpowered(struct usb_gadget * gadget, int is_on)
-{
-	struct fsl_udc *udc;
-	udc = container_of(gadget, struct fsl_udc, gadget);
-	udc->selfpowered = (is_on != 0);
-	return 0;
-}
-
 /* Notify controller that VBUS is powered, Called by whatever
    detects VBUS sessions */
 static int fsl_vbus_session(struct usb_gadget *gadget, int is_active)
@@ -1510,7 +1474,7 @@ static struct usb_gadget_ops fsl_gadget_ops = {
 #ifndef CONFIG_USB_ANDROID
 	.wakeup = fsl_wakeup,
 #endif
-	.set_selfpowered = fsl_set_selfpowered,
+/*	.set_selfpowered = fsl_set_selfpowered,	*/ /* Always selfpowered */
 	.vbus_session = fsl_vbus_session,
 	.vbus_draw = fsl_vbus_draw,
 	.pullup = fsl_pullup,
@@ -1604,8 +1568,7 @@ static void ch9getstatus(struct fsl_udc *udc, u8 request_type, u16 value,
 
 	if ((request_type & USB_RECIP_MASK) == USB_RECIP_DEVICE) {
 		/* Get device status */
-		if (udc->selfpowered)
-			tmp = 1 << USB_DEVICE_SELF_POWERED;
+		tmp = 1 << USB_DEVICE_SELF_POWERED;
 		tmp |= udc->remote_wakeup << USB_DEVICE_REMOTE_WAKEUP;
 	} else if ((request_type & USB_RECIP_MASK) == USB_RECIP_INTERFACE) {
 		/* Get interface status */
@@ -1989,14 +1952,7 @@ static int process_ep_req(struct fsl_udc *udc, int pipe,
 	actual = curr_req->req.length;
 
 	for (j = 0; j < curr_req->dtd_count; j++) {
-#ifdef CONFIG_ARCH_TEGRA
-		/* Fence read for coherency of AHB master intiated writes */
-		readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
-#endif
-		dma_sync_single_for_cpu(udc->gadget.dev.parent, curr_td->td_dma,
-			sizeof(struct ep_td_struct), DMA_FROM_DEVICE);
-
-		remaining_length = (le32_to_cpu(curr_td->size_ioc_sts)
+		remaining_length = (hc32_to_cpu(curr_td->size_ioc_sts)
 					& DTD_PACKET_SIZE)
 				>> DTD_LENGTH_BIT_POS;
 		actual -= remaining_length;
@@ -2272,19 +2228,6 @@ static void fsl_udc_set_current_limit_work(struct work_struct* work)
 	}
 }
 
-#ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
-static void fsl_udc_boost_cpu_frequency_work(struct work_struct* work)
-{
-	if (ep_queue_request_count && boost_cpufreq_work_flag) {
-		pm_qos_update_request(&boost_cpu_freq_req, (s32)CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ * 1000);
-		boost_cpufreq_work_flag = 0;
-	} else if (!ep_queue_request_count && !boost_cpufreq_work_flag) {
-		pm_qos_update_request(&boost_cpu_freq_req, PM_QOS_DEFAULT_VALUE);
-		boost_cpufreq_work_flag = 1;
-	}
-}
-#endif
-
 /*
  * If VBUS is detected and setup packet is not received in 100ms then
  * work thread starts and checks for the USB charger detection.
@@ -2343,11 +2286,6 @@ static irqreturn_t fsl_udc_irq(int irq, void *_udc)
 		spin_unlock_irqrestore(&udc->lock, flags);
 		return IRQ_NONE;
 	}
-
-#ifdef CONFIG_ARCH_TEGRA
-	/* Fence read for coherency of AHB master intiated writes */
-	readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
-#endif
 #ifndef CONFIG_TEGRA_SILICON_PLATFORM
 	{
 		u32 temp = fsl_readl(&usb_sys_regs->vbus_sensors);
@@ -2475,7 +2413,6 @@ out:
 		       retval);
 	return retval;
 }
-//EXPORT_SYMBOL(usb_gadget_probe_driver);
 
 /* Disconnect from gadget driver */
 static int fsl_stop(struct usb_gadget_driver *driver)
@@ -2518,7 +2455,6 @@ static int fsl_stop(struct usb_gadget_driver *driver)
 	       driver->driver.name);
 	return 0;
 }
-//EXPORT_SYMBOL(usb_gadget_unregister_driver);
 
 /*-------------------------------------------------------------------------
 		PROC File System Support
@@ -2811,10 +2747,8 @@ static int fsl_proc_read(char *page, char **start, off_t off, int count,
 static void fsl_udc_release(struct device *dev)
 {
 	complete(udc_controller->done);
-#ifndef CONFIG_ARCH_TEGRA
 	dma_free_coherent(dev->parent, udc_controller->ep_qh_size,
 			udc_controller->ep_qh, udc_controller->ep_qh_dma);
-#endif
 	kfree(udc_controller);
 }
 
@@ -3099,17 +3033,10 @@ static int __init fsl_udc_probe(struct platform_device *pdev)
 		goto err_del_udc;
 
 	create_proc_file();
-#ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
-	boost_cpufreq_work_flag = 1;
-	ep_queue_request_count = 0;
-#endif
+
 	/* create a delayed work for detecting the USB charger */
 	INIT_DELAYED_WORK(&udc_controller->work, fsl_udc_charger_detect_work);
 	INIT_WORK(&udc_controller->charger_work, fsl_udc_set_current_limit_work);
-#ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
-	INIT_WORK(&udc_controller->boost_cpufreq_work, fsl_udc_boost_cpu_frequency_work);
-	pm_qos_add_request(&boost_cpu_freq_req, PM_QOS_CPU_FREQ_MIN, PM_QOS_DEFAULT_VALUE);
-#endif
 
 	/* Get the regulator for drawing the vbus current in udc driver */
 	udc_controller->vbus_regulator = regulator_get(NULL, "usb_bat_chg");
@@ -3177,9 +3104,6 @@ static int __exit fsl_udc_remove(struct platform_device *pdev)
 	udc_controller->done = &done;
 
 	cancel_delayed_work(&udc_controller->work);
-#ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
-	cancel_work_sync(&udc_controller->boost_cpufreq_work);
-#endif
 	if (udc_controller->vbus_regulator)
 		regulator_put(udc_controller->vbus_regulator);
 
