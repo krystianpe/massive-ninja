@@ -2,8 +2,6 @@
  * Driver for Nvidia TEGRA spi controller in slave mode.
  *
  * Copyright (c) 2011, NVIDIA Corporation.
- * Copyright 2013: Olympus Kernel Project
- * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -373,7 +371,6 @@ static unsigned spi_tegra_calculate_curr_xfer_param(
 		tspi->curr_dma_words = max_word;
 		total_fifo_words = remain_len/tspi->bytes_per_word;
 	}
-
 	/* All transfer should be in one shot */
 	if (tspi->curr_dma_words * tspi->bytes_per_word != t->len) {
 		dev_err(&tspi->pdev->dev, "The requested length can not be"
@@ -747,7 +744,7 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 	tspi->command_reg = command;
 
 	dev_dbg(&tspi->pdev->dev, "The def 0x%x and written 0x%lx\n",
-					tspi->def_command_reg, command);
+				tspi->def_command_reg, command);
 
 	command2 &= ~(SLINK_SS_EN_CS(~0) | SLINK_RXEN | SLINK_TXEN);
 	tspi->cur_direction = 0;
@@ -969,6 +966,7 @@ static void handle_cpu_based_xfer(struct spi_tegra_data *tspi)
 		tegra_periph_reset_assert(tspi->clk);
 		udelay(2);
 		tegra_periph_reset_deassert(tspi->clk);
+		WARN_ON(1);
 		spi_tegra_curr_transfer_complete(tspi,
 				tspi->tx_status ||  tspi->rx_status, t->len);
 		goto exit;
@@ -1052,13 +1050,13 @@ static int spi_tegra_handle_transfer_completion(struct spi_tegra_data *tspi)
 	if (err) {
 		dev_err(&tspi->pdev->dev, "%s ERROR bit set 0x%x\n",
 					 __func__, tspi->status_reg);
-		dump_stack();
 		tegra_periph_reset_assert(tspi->clk);
 		udelay(2);
 		tegra_periph_reset_deassert(tspi->clk);
+		WARN_ON(1);
 		spi_tegra_curr_transfer_complete(tspi, err, t->len);
 		spin_unlock_irqrestore(&tspi->lock, flags);
-		return 0;
+		return IRQ_HANDLED;
 	}
 
 	if (tspi->cur_direction & DATA_DIR_RX)
@@ -1075,7 +1073,7 @@ static int spi_tegra_handle_transfer_completion(struct spi_tegra_data *tspi)
 		spi_tegra_curr_transfer_complete(tspi,
 			tspi->tx_status || tspi->rx_status, t->len);
 		spin_unlock_irqrestore(&tspi->lock, flags);
-		return 0;
+		return IRQ_HANDLED;
 	}
 
 	spin_unlock_irqrestore(&tspi->lock, flags);
@@ -1128,7 +1126,7 @@ static irqreturn_t spi_tegra_isr(int irq, void *context_data)
 	return IRQ_WAKE_THREAD;
 }
 
-static int __init spi_slave_tegra_probe(struct platform_device *pdev)
+static int __init spi_tegra_probe(struct platform_device *pdev)
 {
 	struct spi_master	*master;
 	struct spi_tegra_data	*tspi;
@@ -1464,7 +1462,7 @@ static struct platform_driver spi_tegra_driver = {
 
 static int __init spi_tegra_init(void)
 {
-	return platform_driver_probe(&spi_tegra_driver, spi_slave_tegra_probe);
+	return platform_driver_probe(&spi_tegra_driver, spi_tegra_probe);
 }
 subsys_initcall(spi_tegra_init);
 
