@@ -33,7 +33,7 @@
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <linux/completion.h>
-
+#include <linux/pm_runtime.h>
 #include <linux/spi/spi.h>
 #include <linux/spi-tegra.h>
 
