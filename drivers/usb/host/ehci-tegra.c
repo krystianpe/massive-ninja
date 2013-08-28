@@ -803,31 +803,38 @@ static int tegra_ehci_bus_resume(struct usb_hcd *hcd)
 }
 #endif
 
-struct dma_aligned_buffer {
+struct temp_buffer {
 	void *kmalloc_ptr;
 	void *old_xfer_buffer;
 	u8 data[0];
 };
 
-static void free_dma_aligned_buffer(struct urb *urb)
+static void free_temp_buffer(struct urb *urb)
 {
-	struct dma_aligned_buffer *temp = container_of(urb->transfer_buffer,
-		struct dma_aligned_buffer, data);
+	enum dma_data_direction dir;
+	struct temp_buffer *temp;
 
 	if (!(urb->transfer_flags & URB_ALIGNED_TEMP_BUFFER))
 		return;
 
-	if(usb_urb_dir_in(urb))
+	dir = usb_urb_dir_in(urb) ? DMA_FROM_DEVICE : DMA_TO_DEVICE;
+
+	temp = container_of(urb->transfer_buffer, struct temp_buffer,
+			    data);
+
+	if (dir == DMA_FROM_DEVICE)
 		memcpy(temp->old_xfer_buffer, temp->data,
 		       urb->transfer_buffer_length);
 	urb->transfer_buffer = temp->old_xfer_buffer;
 	kfree(temp->kmalloc_ptr);
+
 	urb->transfer_flags &= ~URB_ALIGNED_TEMP_BUFFER;
 }
 
-static int alloc_dma_aligned_buffer(struct urb *urb, gfp_t mem_flags)
+static int alloc_temp_buffer(struct urb *urb, gfp_t mem_flags)
 {
-	struct dma_aligned_buffer *temp, *kmalloc_ptr;
+	enum dma_data_direction dir;
+	struct temp_buffer *temp, *kmalloc_ptr;
 	size_t kmalloc_size;
 
 	if (urb->num_sgs || urb->sg ||
@@ -835,22 +842,26 @@ static int alloc_dma_aligned_buffer(struct urb *urb, gfp_t mem_flags)
 	    !((uintptr_t)urb->transfer_buffer & (TEGRA_USB_DMA_ALIGN - 1)))
 		return 0;
 
+	dir = usb_urb_dir_in(urb) ? DMA_FROM_DEVICE : DMA_TO_DEVICE;
+
 	/* Allocate a buffer with enough padding for alignment */
 	kmalloc_size = urb->transfer_buffer_length +
-		sizeof(struct dma_aligned_buffer) + TEGRA_USB_DMA_ALIGN - 1;
+		sizeof(struct temp_buffer) + TEGRA_USB_DMA_ALIGN - 1;
 
 	kmalloc_ptr = kmalloc(kmalloc_size, mem_flags);
 	if (!kmalloc_ptr)
 		return -ENOMEM;
 
-	/* Position our struct dma_aligned_buffer such that data is aligned */
+	/* Position our struct temp_buffer such that data is aligned */
 	temp = PTR_ALIGN(kmalloc_ptr + 1, TEGRA_USB_DMA_ALIGN) - 1;
+
 	temp->kmalloc_ptr = kmalloc_ptr;
 	temp->old_xfer_buffer = urb->transfer_buffer;
-	if (!usb_urb_dir_in(urb))
+	if (dir == DMA_TO_DEVICE)
 		memcpy(temp->data, urb->transfer_buffer,
 		       urb->transfer_buffer_length);
 	urb->transfer_buffer = temp->data;
+
 	urb->transfer_flags |= URB_ALIGNED_TEMP_BUFFER;
 
 	return 0;
@@ -861,13 +872,13 @@ static int tegra_ehci_map_urb_for_dma(struct usb_hcd *hcd, struct urb *urb,
 {
 	int ret;
 
-	ret = alloc_dma_aligned_buffer(urb, mem_flags);
+	ret = alloc_temp_buffer(urb, mem_flags);
 	if (ret)
 		return ret;
 
 	ret = usb_hcd_map_urb_for_dma(hcd, urb, mem_flags);
 	if (ret)
-		free_dma_aligned_buffer(urb);
+		free_temp_buffer(urb);
 
 	return ret;
 }
@@ -875,7 +886,7 @@ static int tegra_ehci_map_urb_for_dma(struct usb_hcd *hcd, struct urb *urb,
 static void tegra_ehci_unmap_urb_for_dma(struct usb_hcd *hcd, struct urb *urb)
 {
 	usb_hcd_unmap_urb_for_dma(hcd, urb);
-	free_dma_aligned_buffer(urb);
+	free_temp_buffer(urb);
 }
 
 void clk_timer_callback(unsigned long data)
