@@ -32,6 +32,7 @@
 #include <linux/nvhost.h>
 #include <linux/pwm_backlight.h>
 #include <linux/tegra_pwm_bl.h>
+#include <linux/tegra_audio.h>
 
 #include <asm/mach-types.h>
 #include <mach/clk.h>
@@ -163,27 +164,39 @@ static struct tegra_dc_mode olympus_panel_modes[] = {
 static u8 qhd_smd_cmdF0[]={0xf0, 0x5a, 0x5a};
 static u8 qhd_smd_cmdF1[]={0xf1, 0x5a, 0x5a};
 static u8 qhd_smd_cmdD0[]={0xd0, 0x8e};
-static u8 qhd_smd_cmdD2a_es4[]={0xd2, 0x04, 0x53};
-static u8 qhd_smd_cmdD2b_es4[]={0xd2, 0x05, 0x53};
+static u8 qhd_smd_cmdD2a_es4[] = {0xd2, 0x04, 0x53};
+static u8 qhd_smd_cmdD2b_es4[] = {0xd2, 0x05, 0x53};
 
-static u8 qhd_smd_cmdB5_es4[]={0xb5, 0x03, 0x7f, 0x0a, 0x80, 0xff, 0x00};
-static u8 qhd_smd_cmdB7_es4[]={0xb7, 0x7a, 0xf7, 0x4d, 0x91, 0x90, 0xb3, 0xff, 0x80, 0x6d, 0x01};
-static u8 qhd_smd_cmdF4_es4[]={0xf4, 0x00, 0xbb, 0x46, 0x53, 0x0c, 0x49, 0x74, 0x29, 0x12, 0x15, 0x37, 0x37, 0x04};
+static u8 qhd_smd_cmdB5_es4[]  = {0xb5, 0x03, 0x7f, 0x0a, 0x80, 0xff, 0x00};
+static u8 qhd_smd_cmdB5[]      = { 0xB5, 0x03, 0x7F, 0x00, 0x80, 0xC7, 0x00 };
+static u8 qhd_smd_cmdB7[]      = { 0xB7, 0x66, 0xF6, 0x46, 0x9F, 0x90, 0x99, 0xFF, 0x80, 0x6D, 0x01 };
+static u8 qhd_smd_cmdB7_es4[]  = {0xb7, 0x7a, 0xf7, 0x4d, 0x91, 0x90, 0xb3, 0xff, 0x80, 0x6d, 0x01};
+static u8 qhd_smd_cmdF4_es2[]  = { 0xF4, 0x00, 0xBB, 0x46, 0x53, 0x0C, 0x49, 0x74, 0x29, 0x12, 0x15, 0x2f, 0x2f, 0x04};
+static u8 qhd_smd_cmdF4_es4[]  = {0xf4, 0x00, 0xbb, 0x46, 0x53, 0x0c, 0x49, 0x74, 0x29, 0x12, 0x15, 0x37, 0x37, 0x04};
+static u8 qhd_smd_cmdF8_es2[]  = { 0xF8, 0x4B, 0x04, 0x10, 0x1A, 0x2C, 0x2C, 0x2C, 0x2C, 0x14, 0x12 };
 static u8 qhd_smd_cmdF8_es4[]  = { 0xF8, 0x0A, 0x04, 0x10, 0x2A, 0x35, 0x35, 0x35, 0x35, 0x21, 0x1A };
 
 static u8 gamma_r_F9[]         = { 0xF9, 0x04 };
+static u8 gamma_r_FA_es2[]     = { 0xFA, 0x00, 0x2F, 0x30, 0x12, 0x0E, 0x0C, 0x22, 0x27, 0x31, 0x2E, 0x07, 0x0F };
+static u8 gamma_r_FB_es2[]     = { 0xFB, 0x00, 0x2F, 0x30, 0x12, 0x0E, 0x0C, 0x22, 0x27, 0x31, 0x2E, 0x07, 0x0F };
 static u8 gamma_r_FA_es4[]     = { 0xFA, 0x08, 0x1C, 0x1B, 0x0F, 0x0F, 0x0A, 0x1E, 0x22, 0x27, 0x26, 0x07, 0x0D };
 static u8 gamma_r_FB_es4[]     = { 0xFB, 0x08, 0x3C, 0x27, 0x0F, 0x0F, 0x0A, 0x1E, 0x26, 0x31, 0x2F, 0x07, 0x0B };
 
 static u8 gamma_g_F9[]         = { 0xF9, 0x02 };
+static u8 gamma_g_FA_es2[]     = { 0xFA, 0x00, 0x2F, 0x37, 0x15, 0x15, 0x11, 0x1F, 0x25, 0x2D, 0x2A, 0x05, 0x0F };
+static u8 gamma_g_FB_es2[]     = { 0xFB, 0x00, 0x2F, 0x37, 0x15, 0x15, 0x11, 0x1F, 0x25, 0x2D, 0x2A, 0x05, 0x0F };
 static u8 gamma_g_FA_es4[]     = { 0xFA, 0x30, 0x14, 0x0F, 0x00, 0x06, 0x02, 0x1E, 0x22, 0x27, 0x27, 0x08, 0x10 };
 static u8 gamma_g_FB_es4[]     = { 0xFB, 0x30, 0x35, 0x0F, 0x00, 0x0A, 0x02, 0x1C, 0x23, 0x31, 0x2F, 0x08, 0x0E };
 
 static u8 gamma_b_F9[]         = { 0xF9, 0x01 };
+static u8 gamma_b_FA_es2[]     = { 0xFA, 0x00, 0x2F, 0x3F, 0x16, 0x1F, 0x15, 0x1F, 0x25, 0x2D, 0x2B, 0x06, 0x0B };
+static u8 gamma_b_FB_es2[]     = { 0xFB, 0x00, 0x2F, 0x3F, 0x16, 0x1F, 0x15, 0x1F, 0x25, 0x2D, 0x2B, 0x06, 0x0B };
 static u8 gamma_b_FA_es4[]     = { 0xFA, 0x12, 0x1B, 0x26, 0x0E, 0x12, 0x0B, 0x1E, 0x22, 0x27, 0x27, 0x06, 0x0C };
 static u8 gamma_b_FB_es4[]     = { 0xFB, 0x12, 0x3B, 0x2C, 0x12, 0x12, 0x0E, 0x1E, 0x26, 0x31, 0x2F, 0x06, 0x0D };
 
 static u8 gamma_w_F9[]		   = { 0xF9, 0x20 };
+static u8 gamma_w_FA_es2[]     = { 0xFA, 0x00, 0x2F, 0x34, 0x15, 0x1A, 0x11, 0x1F, 0x23, 0x2D, 0x29, 0x02, 0x08 };
+static u8 gamma_w_FB_es2[]     = { 0xFB, 0x00, 0x2F, 0x34, 0x15, 0x1A, 0x11, 0x1F, 0x23, 0x2D, 0x29, 0x02, 0x08 };
 static u8 gamma_w_FA_es4[]     = { 0xFA, 0x37, 0x1B, 0x09, 0x01, 0x06, 0x04, 0x19, 0x19, 0x22, 0x24, 0x04, 0x15 };
 static u8 gamma_w_FB_es4[]     = { 0xFB, 0x37, 0x3B, 0x17, 0x01, 0x0A, 0x04, 0x19, 0x1D, 0x2C, 0x2C, 0x04, 0x13 };
 
@@ -193,7 +206,49 @@ static u8 qhd_smd_cmd55_es2[]  = { 0x55, 0x01 };
 static u8 qhd_smd_cmd35[]      = { 0x35, 0x00 }; /* enable TE control */
 static u8 qhd_smd_cmdC3_es4[]  = { 0xC3, 0x01, 0x4E };
 
-static struct tegra_dsi_cmd dsi_olympus_init_cmd[]= {
+static struct tegra_dsi_cmd dsi_olympus_init_cmd_es2[] = {
+	DSI_DLY_MS(10),
+
+	DSI_CMD_LONG(0x39, qhd_smd_cmdF0),
+	DSI_CMD_LONG(0x39, qhd_smd_cmdF1),
+	DSI_CMD_LONG(0x39, qhd_smd_cmdD0),
+
+	DSI_CMD_LONG(0x39, qhd_smd_cmd55_es2),
+
+	DSI_CMD_SHORT(0x05, 0x11, 0x00),
+	DSI_DLY_MS(120),
+
+	DSI_CMD_LONG(0x39, qhd_smd_cmdF4_es2),
+	DSI_CMD_LONG(0x39, qhd_smd_cmdF8_es2),
+
+	DSI_CMD_LONG(0x39, qhd_smd_cmdB5),
+	DSI_CMD_LONG(0x39, qhd_smd_cmdB7),
+
+	DSI_CMD_LONG(0x39, gamma_r_F9),
+	DSI_CMD_LONG(0x39, gamma_r_FA_es2),
+	DSI_CMD_LONG(0x39, gamma_r_FB_es2),
+
+	DSI_CMD_LONG(0x39, gamma_g_F9),
+	DSI_CMD_LONG(0x39, gamma_g_FA_es2),
+	DSI_CMD_LONG(0x39, gamma_g_FB_es2),
+
+	DSI_CMD_LONG(0x39, gamma_b_F9),
+	DSI_CMD_LONG(0x39, gamma_b_FA_es2),
+	DSI_CMD_LONG(0x39, gamma_b_FB_es2),
+
+	DSI_CMD_LONG(0x39, gamma_w_F9),
+	DSI_CMD_LONG(0x39, gamma_w_FA_es2),
+	DSI_CMD_LONG(0x39, gamma_w_FB_es2),
+
+	DSI_CMD_LONG(0x39, qhd_smd_cmd53_es2),
+
+	DSI_CMD_LONG(0x39, qhd_smd_cmd35),
+
+	DSI_CMD_SHORT(0x05, 0x29, 0x00),
+	DSI_DLY_MS(20),
+};
+
+static struct tegra_dsi_cmd dsi_olympus_init_cmd_es4[]= {
 	DSI_DLY_MS(10),
 	DSI_CMD_LONG(0x39, qhd_smd_cmdF0),
 	DSI_CMD_LONG(0x39, qhd_smd_cmdF1),
@@ -341,8 +396,8 @@ static struct tegra_dsi_out olympus_dsi_out = {
 		.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_TX_ONLY,
 		.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
 		.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0,
-		.dsi_init_cmd = dsi_olympus_init_cmd,
-		.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd),
+		.dsi_init_cmd = dsi_olympus_init_cmd_es2,
+		.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd_es2),
 		.dsi_suspend_cmd = dsi_suspend_cmd,
 		.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),
 };
@@ -460,14 +515,15 @@ static struct tegra_dc_out olympus_disp2_out = {
 
 static struct tegra_fb_data olympus_disp2_fb_data = {
 		.win		= 0,
-		.xres		= 800,
-		.yres		= 480,
+		.xres		= 1366,
+		.yres		= 768,
 		.bits_per_pixel	= 32,
 		.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
 
 static struct tegra_dc_platform_data olympus_disp2_pdata = {
 	.flags			= 0,
+	.emc_clk_rate	= ULONG_MAX,
 	.default_out	= &olympus_disp2_out,
 	.fb				= &olympus_disp2_fb_data,
 };
@@ -521,26 +577,25 @@ static struct platform_device *olympus_gfx_devices[] __initdata = {
  */
 struct early_suspend olympus_panel_early_suspender;
 
+static u8 bkp_suspend_aggr=99;
+
 static void olympus_panel_early_suspend(struct early_suspend *h)
 {
 	int i;
 
 	printk(KERN_INFO "%s: here...\n", __func__);
 //	tegra2_enable_autoplug();
+	if (tegra_is_voice_call_active()) {
+		bkp_suspend_aggr = olympus_dsi_out.suspend_aggr;
+		olympus_dsi_out.suspend_aggr = DSI_HOST_SUSPEND_LV2;
+	}
+
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_POWERDOWN);
 
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_save_default_governor();
-	cpufreq_set_conservative_governor();
-        cpufreq_set_conservative_governor_param("up_threshold",
-			SET_CONSERVATIVE_GOVERNOR_UP_THRESHOLD);
-
-	cpufreq_set_conservative_governor_param("down_threshold",
-			SET_CONSERVATIVE_GOVERNOR_DOWN_THRESHOLD);
-
-	cpufreq_set_conservative_governor_param("freq_step",
-		SET_CONSERVATIVE_GOVERNOR_FREQ_STEP);
+	cpufreq_store_default_gov();
+	cpufreq_change_gov(cpufreq_conservative_gov);
 #endif
 }
 
@@ -549,11 +604,15 @@ static void olympus_panel_late_resume(struct early_suspend *h)
 	int i;
 
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_restore_default_governor();
+	cpufreq_restore_default_gov();
 #endif
 	printk(KERN_INFO "%s: here...\n", __func__);
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
+	if (bkp_suspend_aggr != 99) {
+			olympus_dsi_out.suspend_aggr = bkp_suspend_aggr;
+			bkp_suspend_aggr = 99;
+		}
 //	tegra2_disable_autoplug();
 }
 #endif
@@ -571,6 +630,10 @@ int __init olympus_panel_init(void)
 	if ((s_MotorolaDispInfo >> 31) & 0x01) {
 		olympus_disp1_out.modes  = olympus_panel_modes_for_0x8;
 		olympus_disp1_out.n_modes = ARRAY_SIZE(olympus_panel_modes_for_0x8);
+	}
+	if (((s_MotorolaDispInfo >> 9) & 0x07) > 1) {
+		olympus_dsi_out.dsi_init_cmd = dsi_olympus_init_cmd_es4;
+		olympus_dsi_out.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd_es4);
 	}
 
 	olympus_panel_setup_dc();
@@ -620,6 +683,3 @@ int __init olympus_panel_init(void)
 	return err;
 
 }
-
-
-
