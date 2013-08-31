@@ -1014,14 +1014,13 @@ static int spi_tegra_handle_transfer_completion(struct spi_tegra_data *tspi)
 	/* Abort dmas if any error */
 	if (tspi->cur_direction & DATA_DIR_TX) {
 		if (tspi->tx_status) {
-			tegra_dma_dequeue_req(tspi->tx_dma, &tspi->tx_dma_req);
+			tegra_dma_dequeue(tspi->tx_dma);
 			err += 1;
 		} else {
 			wait_status = wait_for_completion_interruptible_timeout(
 				&tspi->tx_dma_complete, SLINK_DMA_TIMEOUT);
 			if (wait_status <= 0) {
-				tegra_dma_dequeue_req(tspi->tx_dma,
-							&tspi->tx_dma_req);
+				tegra_dma_dequeue(tspi->tx_dma);
 				dev_err(&tspi->pdev->dev, "Error in Dma Tx "
 							"transfer\n");
 				err += 1;
@@ -1031,14 +1030,13 @@ static int spi_tegra_handle_transfer_completion(struct spi_tegra_data *tspi)
 
 	if (tspi->cur_direction & DATA_DIR_RX) {
 		if (tspi->rx_status) {
-			tegra_dma_dequeue_req(tspi->rx_dma, &tspi->rx_dma_req);
+			tegra_dma_dequeue(tspi->rx_dma);
 			err += 2;
 		} else {
 			wait_status = wait_for_completion_interruptible_timeout(
 				&tspi->rx_dma_complete, SLINK_DMA_TIMEOUT);
 			if (wait_status <= 0) {
-				tegra_dma_dequeue_req(tspi->rx_dma,
-						&tspi->rx_dma_req);
+				tegra_dma_dequeue(tspi->rx_dma);
 				dev_err(&tspi->pdev->dev, "Error in Dma Rx "
 							"transfer\n");
 				err += 2;
