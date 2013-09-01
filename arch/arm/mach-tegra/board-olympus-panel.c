@@ -594,8 +594,16 @@ static void olympus_panel_early_suspend(struct early_suspend *h)
 		fb_blank(registered_fb[i], FB_BLANK_POWERDOWN);
 
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_store_default_gov();
-	cpufreq_change_gov(cpufreq_conservative_gov);
+	cpufreq_save_default_governor();
+	cpufreq_set_conservative_governor();
+        cpufreq_set_conservative_governor_param("up_threshold",
+			SET_CONSERVATIVE_GOVERNOR_UP_THRESHOLD);
+
+	cpufreq_set_conservative_governor_param("down_threshold",
+			SET_CONSERVATIVE_GOVERNOR_DOWN_THRESHOLD);
+
+	cpufreq_set_conservative_governor_param("freq_step",
+		SET_CONSERVATIVE_GOVERNOR_FREQ_STEP);
 #endif
 }
 
@@ -604,7 +612,7 @@ static void olympus_panel_late_resume(struct early_suspend *h)
 	int i;
 
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_restore_default_gov();
+	cpufreq_restore_default_governor();
 #endif
 	printk(KERN_INFO "%s: here...\n", __func__);
 	for (i = 0; i < num_registered_fb; i++)
