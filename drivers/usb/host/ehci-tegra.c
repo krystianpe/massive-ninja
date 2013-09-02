@@ -344,14 +344,14 @@ static int tegra_ehci_hub_control(
 
 		goto done;
 	}
-
+#ifndef CONFIG_MACH_OLYMPUS
 	/* For USB1 port we need to issue Port Reset twice internally */
 	if (tegra->phy->instance == 0 &&
 	   (typeReq == SetPortFeature && wValue == USB_PORT_FEAT_RESET)) {
 		spin_unlock_irqrestore(&ehci->lock, flags);
 		return tegra_ehci_internal_port_reset(ehci, status_reg);
 	}
-
+#endif
 	/*
 	 * Tegra host controller will time the resume operation to clear the bit
 	 * when the port control state switches to HS or FS Idle. This behavior
