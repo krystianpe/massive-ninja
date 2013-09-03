@@ -80,12 +80,12 @@ void cpcap_start_host(struct cpcap_otg_data *cpcap)
 	pdev->dev.dma_mask = host->dev.dma_mask;
 	pdev->dev.coherent_dma_mask = host->dev.coherent_dma_mask;
 
-	platform_data = kmalloc(sizeof(struct tegra_ehci_platform_data), GFP_KERNEL);
+	platform_data = kmalloc(sizeof(struct tegra_usb_platform_data), GFP_KERNEL);
 	if (!platform_data)
 		goto error;
 
 	memcpy(platform_data, host->dev.platform_data,
-				sizeof(struct tegra_ehci_platform_data));
+				sizeof(struct tegra_usb_platform_data));
 	pdev->dev.platform_data = platform_data;
 
 	retval = platform_device_add(pdev);

@@ -26,8 +26,7 @@
 
 static struct platform_device *olympus_devices[] __initdata = {
 	&tegra_pmu_device,
-	&tegra_udc_device,
-	&tegra_wdt_device,
+//	&tegra_wdt_device,
    	&tegra_pwfm1_device,
 };
 
