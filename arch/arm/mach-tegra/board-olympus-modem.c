@@ -297,7 +297,7 @@ static int __init olympus_mdm_ctrl_init(void)
  */
 extern struct uart_clk_parent uart_parent_clk[3];
 
-//static struct wake_lock mdm6600_host_wakelock;
+static struct wake_lock mdm6600_host_wakelock;
 static irqreturn_t mdm6600_host_wake_irq_handler(int irq, void *ptr)
 {
 	/* Keep us awake for a bit until RIL gets going */
@@ -342,10 +342,9 @@ static int olympus_setup_mdm6600_uart_ipc(void)
 				gpio_get_value(MDM6600_UART_HOST_WAKE_GPIO));
 
 	irq_set_irq_wake(irq, 1);
-	//irq_set_irq_type(irq, IRQ_TYPE_EDGE_RISING);
-	irq_set_irq_type(irq, IRQ_TYPE_EDGE_FALLING);
-	err = request_irq(irq, mdm6600_host_wake_irq_handler,
-			IRQF_DISABLED | IRQ_TYPE_EDGE_FALLING , "mdm6600_wake_host", NULL);
+		irq_set_irq_type(irq, IRQ_TYPE_EDGE_RISING);
+		err = request_irq(irq, mdm6600_host_wake_irq_handler,
+				IRQF_DISABLED, "mdm6600_wake_host", NULL);
 	if (err < 0) {
 		pr_err("%s: failed to register MDM6600 BP AP WAKE "
 		       "interrupt handler, errno = %d\n", __func__, -err);
