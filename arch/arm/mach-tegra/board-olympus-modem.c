@@ -298,14 +298,12 @@ static int __init olympus_mdm_ctrl_init(void)
 extern struct uart_clk_parent uart_parent_clk[3];
 
 //static struct wake_lock mdm6600_host_wakelock;
-#if 0
 static irqreturn_t mdm6600_host_wake_irq_handler(int irq, void *ptr)
 {
 	/* Keep us awake for a bit until RIL gets going */
 	wake_lock_timeout(&mdm6600_host_wakelock, (HZ * 1));
 	return IRQ_HANDLED;
 }
-#endif
 
 static void mdm6600_wake_peer(struct uart_port *uport)
 {
@@ -329,7 +327,6 @@ static struct tegra_hsuart_platform_data olympus_mdm6600_uart_pdata = {
 
 static int olympus_setup_mdm6600_uart_ipc(void)
 {
-#if 0
 	int irq, err;
 
 	/* Host wake */
@@ -358,7 +355,6 @@ static int olympus_setup_mdm6600_uart_ipc(void)
 	gpio_request(MDM6600_UART_PEER_WAKE_GPIO, "mdm6600 wake peer");
 	gpio_direction_output(MDM6600_UART_PEER_WAKE_GPIO, 1);
 	gpio_set_value(MDM6600_UART_PEER_WAKE_GPIO, 0);
-#endif
 
 	tegra_uartd_device.dev.platform_data = &olympus_mdm6600_uart_pdata;
 	return platform_device_register(&tegra_uartd_device);
