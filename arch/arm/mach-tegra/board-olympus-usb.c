@@ -137,7 +137,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 		.vbus_gpio = -1,
 		.vbus_reg = NULL,
 //		.vbus_reg = "vusb",
-		.hot_plug = true,
+		.hot_plug = false,
 		.remote_wakeup_supported = false,
 		.power_off_on_suspend = true,
 	},
