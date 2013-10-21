@@ -589,64 +589,6 @@ static int spi_tegra_start_cpu_based_transfer(
 	return 0;
 }
 
-static void set_best_clk_source(struct spi_tegra_data *tspi,
-		unsigned long speed)
-{
-	long new_rate;
-	unsigned long err_rate;
-	int rate = speed * 4;
-	unsigned int fin_err = speed * 4;
-	int final_index = -1;
-	int count;
-	int ret;
-	struct clk *pclk;
-	unsigned long prate, crate, nrate;
-	unsigned long cdiv;
-
-	if (!tspi->parent_clk_count || !tspi->parent_clk_list)
-		return;
-
-	/* make sure divisor is more than min_div */
-	pclk = clk_get_parent(tspi->clk);
-	prate = clk_get_rate(pclk);
-	crate = clk_get_rate(tspi->clk);
-	cdiv = DIV_ROUND_UP(prate, crate);
-	if (cdiv < tspi->min_div) {
-		nrate = DIV_ROUND_UP(prate, tspi->min_div);
-		clk_set_rate(tspi->clk, nrate);
-	}
-
-	for (count = 0; count < tspi->parent_clk_count; ++count) {
-		if (!tspi->parent_clk_list[count].parent_clk)
-			continue;
-		ret = clk_set_parent(tspi->clk,
-			tspi->parent_clk_list[count].parent_clk);
-		if (ret < 0) {
-			dev_warn(&tspi->pdev->dev,
-				"Error in setting parent clk src %s\n",
-				tspi->parent_clk_list[count].name);
-			continue;
-		}
-
-		new_rate = clk_round_rate(tspi->clk, rate);
-		if (new_rate < 0)
-			continue;
-
-		err_rate = abs(new_rate - rate);
-		if (err_rate < fin_err) {
-			final_index = count;
-			fin_err = err_rate;
-		}
-	}
-
-	if (final_index >= 0) {
-		dev_info(&tspi->pdev->dev, "Setting clk_src %s\n",
-				tspi->parent_clk_list[final_index].name);
-		clk_set_parent(tspi->clk,
-			tspi->parent_clk_list[final_index].parent_clk);
-	}
-}
-
 static void spi_tegra_start_transfer(struct spi_device *spi,
 		    struct spi_transfer *t, bool is_first_of_msg,
 		    bool is_single_xfer)
@@ -1041,10 +983,9 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 			wait_status = wait_for_completion_interruptible_timeout(
 				&tspi->tx_dma_complete, SLINK_DMA_TIMEOUT);
 			if (wait_status <= 0) {
-				tegra_dma_dequeue_req(tspi->tx_dma,
-							&tspi->tx_dma_req);
-				dev_err(&tspi->pdev->dev,
-					"Error in Dma Tx transfer\n");
+				tegra_dma_dequeue(tspi->tx_dma);
+				dev_err(&tspi->pdev->dev, "Error in Dma Tx "
+							"transfer\n");
 				err += 1;
 			}
 		}
@@ -1058,10 +999,9 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 			wait_status = wait_for_completion_interruptible_timeout(
 				&tspi->rx_dma_complete, SLINK_DMA_TIMEOUT);
 			if (wait_status <= 0) {
-				tegra_dma_dequeue_req(tspi->rx_dma,
-							&tspi->rx_dma_req);
-				dev_err(&tspi->pdev->dev,
-					"Error in Dma Rx transfer\n");
+				tegra_dma_dequeue(tspi->rx_dma);
+				dev_err(&tspi->pdev->dev, "Error in Dma Rx "
+							"transfer\n");
 				err += 2;
 			}
 		}
@@ -1397,28 +1337,6 @@ static int spi_tegra_suspend(struct platform_device *pdev, pm_message_t state)
 		spin_unlock_irqrestore(&tspi->lock, flags);
 		msleep(20);
 		spin_lock_irqsave(&tspi->lock, flags);
-	}
-
-	/* Wait for current transfer completes only */
-	tspi->is_suspended = true;
-	if (!list_empty(&tspi->queue)) {
-		limit = 50;
-		dev_err(&pdev->dev, "All transfer has not completed, "
-			"Waiting for %d ms current transfer to complete\n",
-			limit * 20);
-		while (tspi->is_transfer_in_progress && limit--) {
-			spin_unlock_irqrestore(&tspi->lock, flags);
-			msleep(20);
-			spin_lock_irqsave(&tspi->lock, flags);
-		}
-	}
-
-	if (tspi->is_transfer_in_progress) {
-		dev_err(&pdev->dev,
-			"Spi transfer is in progress Avoiding suspend\n");
-		tspi->is_suspended = false;
-		spin_unlock_irqrestore(&tspi->lock, flags);
-		return -EBUSY;
 	}
 
 	spin_unlock_irqrestore(&tspi->lock, flags);
