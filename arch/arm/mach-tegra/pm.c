@@ -844,6 +844,20 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 		goto fail;
 	}
 
+	if (tegra_is_voice_call_active()) {
+		u32 reg;
+
+		/* backup the current value of scratch37 */
+		scratch37 = readl(pmc + PMC_SCRATCH37);
+
+		/* If voice call is active, set a flag in PMC_SCRATCH37 */
+		reg = TEGRA_POWER_LP1_AUDIO;
+		pmc_32kwritel(reg, PMC_SCRATCH37);
+#ifdef CONFIG_MACH_OLYMPUS
+		mode = TEGRA_SUSPEND_LP1;
+#endif
+	}
+
 	if ((mode == TEGRA_SUSPEND_LP0) && !tegra_pm_irq_lp0_allowed()) {
 		pr_info("LP0 not used due to unsupported wakeup events\n");
 		mode = TEGRA_SUSPEND_LP1;

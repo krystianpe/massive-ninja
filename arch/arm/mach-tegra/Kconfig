@@ -360,7 +360,8 @@ config TEGRA_CLUSTER_CONTROL
 
 config TEGRA_AUTO_HOTPLUG
 	bool "Enable automatic CPU hot-plugging"
-	depends on HOTPLUG_CPU && CPU_FREQ && !ARCH_CPU_PROBE_RELEASE && !ARCH_TEGRA_2x_SOC
+#	depends on HOTPLUG_CPU && CPU_FREQ && !ARCH_CPU_PROBE_RELEASE && !ARCH_TEGRA_2x_SOC
+	depends on HOTPLUG_CPU && CPU_FREQ && !ARCH_CPU_PROBE_RELEASE
 	default y
 	help
 	  This option enables turning CPUs off/on and switching tegra
@@ -500,4 +501,27 @@ config TEGRA_PREINIT_CLOCKS
 	help
 	  Preinitialize Tegra clocks to known states before actual full-
 	  scale clock initialization starts.
-endif
+
+config TEGRA_PREPOWER_WIFI
+	bool "Pre-power up WiFi "
+	default n
+	help
+	  Pre-power up the on board WiFi chip
+
+config TEGRA_SKIN_THROTTLE
+	bool "Skin Temperature throttling"
+	depends on TEGRA_THERMAL_THROTTLE
+	depends on THERM_EST
+	default n
+	help
+	  Enable throttling to control the temperature of the skin/case
+	  of the device
+
+config TEGRA_DC_USE_HW_BPP
+	bool "Default Bits Per Pixel value from tegra DC hardware"
+	depends on TEGRA_DC
+	default n
+        help
+	  Programs platform data to inform DC driver to use current
+	  hardware value for bits per pixel setting.  Useful for
+          preserving and displaying framebuffer content from bootloader.
