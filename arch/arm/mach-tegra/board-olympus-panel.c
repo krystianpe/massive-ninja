@@ -32,7 +32,6 @@
 #include <linux/nvhost.h>
 #include <linux/pwm_backlight.h>
 #include <linux/tegra_pwm_bl.h>
-#include <linux/tegra_audio.h>
 
 #include <asm/mach-types.h>
 #include <mach/clk.h>
@@ -585,14 +584,10 @@ static void olympus_panel_early_suspend(struct early_suspend *h)
 
 	printk(KERN_INFO "%s: here...\n", __func__);
 //	tegra2_enable_autoplug();
-	if (tegra_is_voice_call_active()) {
-		bkp_suspend_aggr = olympus_dsi_out.suspend_aggr;
-		olympus_dsi_out.suspend_aggr = DSI_HOST_SUSPEND_LV2;
-	}
 
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_POWERDOWN);
-
+#if 0
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
 	cpufreq_save_default_governor();
 	cpufreq_set_conservative_governor();
@@ -605,14 +600,16 @@ static void olympus_panel_early_suspend(struct early_suspend *h)
 	cpufreq_set_conservative_governor_param("freq_step",
 		SET_CONSERVATIVE_GOVERNOR_FREQ_STEP);
 #endif
+#endif
 }
 
 static void olympus_panel_late_resume(struct early_suspend *h)
 {
 	int i;
-
+#if 0
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
 	cpufreq_restore_default_governor();
+#endif
 #endif
 	printk(KERN_INFO "%s: here...\n", __func__);
 	for (i = 0; i < num_registered_fb; i++)
