@@ -83,6 +83,13 @@
 #define e1506_pm269_panel_enb		TEGRA_GPIO_PW1
 #define e1506_pm269_bl_enb		TEGRA_GPIO_PH2
 
+/* E1506 display board pins */
+#define e1506_pm269_lcd_te		TEGRA_GPIO_PJ1
+#define e1506_pm269_dsi_vddio		TEGRA_GPIO_PH1
+#define e1506_pm269_dsia_bl_pwm		TEGRA_GPIO_PH0
+#define e1506_pm269_panel_enb		TEGRA_GPIO_PW1
+#define e1506_pm269_bl_enb		TEGRA_GPIO_PH2
+
 /* E1247 reworked for pm269 pins */
 #define e1247_pm269_lvds_shutdown	TEGRA_GPIO_PN6
 
@@ -1052,6 +1059,12 @@ struct tegra_dsi_out cardhu_dsi = {
 	.n_late_resume_cmd = ARRAY_SIZE(dsi_late_resume_cmd),
 	.dsi_late_resume_cmd = dsi_late_resume_cmd,
 
+	.n_early_suspend_cmd = ARRAY_SIZE(dsi_early_suspend_cmd),
+	.dsi_early_suspend_cmd = dsi_early_suspend_cmd,
+
+	.n_late_resume_cmd = ARRAY_SIZE(dsi_late_resume_cmd),
+	.dsi_late_resume_cmd = dsi_late_resume_cmd,
+
 	.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),
 	.dsi_suspend_cmd = dsi_suspend_cmd,
 
@@ -1111,6 +1124,13 @@ static struct tegra_dc_mode cardhu_dsi_modes_218[] = {
 
 static struct tegra_fb_data cardhu_dsi_fb_data = {
 	.win		= 0,
+	.bits_per_pixel	= 32,
+#endif
+
+#if DSI_PANEL_1506
+	.win		= 0,
+	.xres		= 720,
+	.yres		= 1280,
 	.bits_per_pixel	= 32,
 #endif
 
