@@ -1284,13 +1284,13 @@ static int set_power_helper(struct ov5650_platform_data *pdata,
 	if (pdata) {
 		if (powerLevel && pdata->power_on) {
 			if (*ref_cnt == 0)
-				pdata->power_on();
+				pdata->power_on(pdata->power_id);
 			*ref_cnt = *ref_cnt + 1;
 		}
 		else if (pdata->power_off) {
 			*ref_cnt = *ref_cnt - 1;
 			if (*ref_cnt <= 0)
-				pdata->power_off();
+				pdata->power_off(pdata->power_id);
 		}
 	}
 	return 0;
@@ -1302,7 +1302,8 @@ static int ov5650_set_power(struct ov5650_info *info, int powerLevel)
 			stereo_ov5650_info->camera_mode);
 // for mot
 	if (Main & stereo_ov5650_info->camera_mode)
-		set_power_helper(stereo_ov5650_info->left.pdata, powerLevel);
+		set_power_helper(stereo_ov5650_info->left.pdata, powerLevel,
+			 &info->power_refcnt_le);
 
 	if (StereoCameraMode_Left & info->camera_mode) {
 		mutex_lock(&info->mutex_le);
