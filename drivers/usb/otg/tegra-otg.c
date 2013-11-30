@@ -116,27 +116,7 @@ static unsigned long enable_interrupt(struct tegra_otg_data *tegra, bool en)
 	return val;
 }
 
-static unsigned long enable_interrupt(struct tegra_otg_data *tegra, bool en)
-{
-	unsigned long val;
-
-	clk_enable(tegra->clk);
-	val = otg_readl(tegra, USB_PHY_WAKEUP);
-	if (en)
-		val |= USB_INT_EN;
-	else
-		val &= ~USB_INT_EN;
-	otg_writel(tegra, val, USB_PHY_WAKEUP);
-	/* Add delay to make sure register is updated */
-	udelay(1);
-	clk_disable(tegra->clk);
-
-	return val;
-}
-
-static struct platform_device *
-tegra_usb_otg_host_register(struct platform_device *ehci_device,
-			    struct tegra_ehci_platform_data *pdata)
+static void tegra_start_host(struct tegra_otg_data *tegra)
 {
 	struct tegra_usb_otg_data *pdata = tegra->otg.dev->platform_data;
 	struct platform_device *pdev, *ehci_device = pdata->ehci_device;
@@ -279,15 +259,6 @@ static void irq_work(struct work_struct *work)
 		to = OTG_STATE_B_PERIPHERAL;
 	else
 		to = OTG_STATE_A_SUSPEND;
-
-	if (from != OTG_STATE_A_HOST) {
-		if (tegra->int_status & USB_VBUS_INT_STATUS) {
-			if (status & USB_VBUS_STATUS)
-				to = OTG_STATE_B_PERIPHERAL;
-			else
-				to = OTG_STATE_A_SUSPEND;
-		}
-	}
 
 	spin_unlock_irqrestore(&tegra->lock, flags);
 	tegra_change_otg_state(tegra, to);
@@ -611,3 +582,4 @@ static void __exit tegra_otg_exit(void)
 	platform_driver_unregister(&tegra_otg_driver);
 }
 module_exit(tegra_otg_exit);
+
