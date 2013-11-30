@@ -783,7 +783,7 @@ static int __init motsnd_soc_init(void)
 		return -ENOMEM;
 	}
 
-	ret = tegra_asoc_utils_init(&card_data->util_data,&mot_snd_device->dev);
+	ret = tegra_asoc_utils_init(&card_data->util_data,&mot_snd_device->dev, &snd_soc_mot);
 	if (ret)
 		goto err_free;
 	platform_set_drvdata(mot_snd_device, &snd_soc_mot);
