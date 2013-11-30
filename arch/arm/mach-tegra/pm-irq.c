@@ -1,11 +1,8 @@
 /*
  * Copyright (C) 2011 Google, Inc.
- * Copyright 2013: Olympus Kernel Project
- * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * Author:
  *	Colin Cross <ccross@android.com>
- *      Kernel Olympus Project
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -148,15 +145,12 @@ static inline void clear_pmc_sw_wake_status(void)
 
 int tegra_pm_irq_set_wake(int irq, int enable)
 {
-	struct wake_mask_types wake_msk;
-	int flow_type = -1;
-	int err;
+	int wake = tegra_irq_to_wake(irq);
 
-	err = tegra_irq_to_wake(irq, flow_type, &wake_msk);
-	if (err == -EALREADY) {
+	if (wake == -EALREADY) {
 		/* EALREADY means wakeup event already accounted for */
 		return 0;
-	} else if (err == -ENOTSUPP) {
+	} else if (wake == -ENOTSUPP) {
 		/* ENOTSUPP means LP0 not supported with this wake source */
 		WARN(enable && warn_prevent_lp0, "irq %d prevents lp0\n", irq);
 		if (enable)
@@ -164,43 +158,46 @@ int tegra_pm_irq_set_wake(int irq, int enable)
 		else if (!WARN_ON(tegra_prevent_lp0 == 0))
 			tegra_prevent_lp0--;
 		return 0;
-	} else if (err < 0) {
+	} else if (wake < 0) {
 		return -EINVAL;
 	}
 
-	if (enable)
-		tegra_lp0_wake_enb |= (wake_msk.wake_mask_hi |
-			wake_msk.wake_mask_lo | wake_msk.wake_mask_any);
-	else
-		tegra_lp0_wake_enb &= ~(wake_msk.wake_mask_hi |
-			wake_msk.wake_mask_lo | wake_msk.wake_mask_any);
+	if (enable) {
+		tegra_lp0_wake_enb |= 1ull << wake;
+		pr_info("Enabling wake%d\n", wake);
+	} else {
+		tegra_lp0_wake_enb &= ~(1ull << wake);
+		pr_info("Disabling wake%d\n", wake);
+	}
 
 	return 0;
 }
 
 int tegra_pm_irq_set_wake_type(int irq, int flow_type)
 {
-	struct wake_mask_types wake_msk;
-	int err;
+	int wake = tegra_irq_to_wake(irq);
 
-	err = tegra_irq_to_wake(irq, flow_type, &wake_msk);
-
-	if (err < 0)
+	if (wake < 0)
 		return 0;
 
-	/* configure LOW/FALLING polarity wake sources for an irq */
-	tegra_lp0_wake_level &= ~wake_msk.wake_mask_lo;
-	tegra_lp0_wake_level_any &= ~wake_msk.wake_mask_lo;
+	switch (flow_type) {
+	case IRQF_TRIGGER_FALLING:
+	case IRQF_TRIGGER_LOW:
+		tegra_lp0_wake_level &= ~(1ull << wake);
+		tegra_lp0_wake_level_any &= ~(1ull << wake);
+		break;
+	case IRQF_TRIGGER_HIGH:
+	case IRQF_TRIGGER_RISING:
+		tegra_lp0_wake_level |= (1ull << wake);
+		tegra_lp0_wake_level_any &= ~(1ull << wake);
+		break;
 
-	/* configure HIGH/RISING polarity wake sources for an irq */
-	tegra_lp0_wake_level |= wake_msk.wake_mask_hi;
-	tegra_lp0_wake_level_any &= ~wake_msk.wake_mask_hi;
-
-	/*
-	 * configure RISING and FALLING i.e. ANY polarity wake
-	 * sources for an irq
-	 */
-	tegra_lp0_wake_level_any |= wake_msk.wake_mask_any;
+	case IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING:
+		tegra_lp0_wake_level_any |= (1ull << wake);
+		break;
+	default:
+		return -EINVAL;
+	}
 
 	return 0;
 }
@@ -287,15 +284,10 @@ static int tegra_pm_irq_syscore_suspend(void)
 		wake_enb = 0xffffffff;
 	}
 
-	/* Clear PMC Wake Status registers while going to suspend */
+	/* Clear PMC Wake Status register while going to suspend */
 	temp = readl(pmc + PMC_WAKE_STATUS);
 	if (temp)
 		pmc_32kwritel(temp, PMC_WAKE_STATUS);
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	temp = readl(pmc + PMC_WAKE2_STATUS);
-	if (temp)
-		pmc_32kwritel(temp, PMC_WAKE2_STATUS);
-#endif
 
 	write_pmc_wake_level(wake_level);
 
@@ -373,3 +365,4 @@ static int __init tegra_pm_irq_debug_init(void)
 
 late_initcall(tegra_pm_irq_debug_init);
 #endif
+

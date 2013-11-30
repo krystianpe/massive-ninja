@@ -131,15 +131,9 @@ struct nvavp_info {
 	/* client for driver allocations, persistent */
 	struct nvmap_client		*nvmap;
 
-	struct mutex			pushbuffer_lock;
-	struct nvmap_handle_ref		*pushbuf_handle;
-	unsigned long			pushbuf_phys;
-	u8				*pushbuf_data;
-	u32				pushbuf_index;
-	u32				pushbuf_fence;
 	bool				pending;
 
-	bool				pending;
+//	bool				pending;
 
 	struct nvavp_channel		channel_info[NVAVP_NUM_CHANNELS];
 
@@ -147,7 +141,10 @@ struct nvavp_info {
 	u32				syncpt_value;
 
 	struct nvhost_device		*nvhost_dev;
-	struct miscdevice		misc_dev;
+	struct miscdevice		video_misc_dev;
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
+	struct miscdevice		audio_misc_dev;
+#endif
 	atomic_t			clock_stay_on_refcount;
 };
 
@@ -159,6 +156,7 @@ struct nvavp_clientctx {
 	int num_relocs;
 	struct nvavp_info *nvavp;
 	int clock_stay_on;
+	int channel_id;
 };
 
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
@@ -208,8 +206,8 @@ static void nvavp_set_channel_control_area(struct nvavp_info *nvavp, int channel
 	writel(0x0, &control->get);
 
 	pr_debug("nvavp_set_channel_control_area for channel_id (%d):\
-		control->put (0x%08x) control->get (0x%08x)\n",
-		channel_id, (u32) &control->put, (u32) &control->get);
+		control->put (0x%x) control->get (0x%x)\n",
+		channel_id, &control->put, &control->get);
 
 	/* enable avp VDE clock control and disable iram clock gating */
 	writel(0x0, &control->idle_clk_enable);
@@ -274,7 +272,8 @@ static void nvavp_clks_disable(struct nvavp_info *nvavp)
 
 static u32 nvavp_check_idle(struct nvavp_info *nvavp)
 {
-	struct nv_e276_control *control = nvavp->os_control;
+	struct nvavp_channel *channel_info = nvavp_get_channel_info(nvavp, NVAVP_VIDEO_CHANNEL);
+	struct nv_e276_control *control = channel_info->os_control;
 	return ((control->put == control->get)
 		&& (!atomic_read(&nvavp->clock_stay_on_refcount))) ? 1 : 0;
 }
@@ -288,14 +287,14 @@ static void clock_disable_handler(struct work_struct *work)
 			    clock_disable_work);
 	channel_info = nvavp_get_channel_info(nvavp, NVAVP_VIDEO_CHANNEL);
 
-	mutex_lock(&nvavp->pushbuffer_lock);
+	mutex_lock(&channel_info->pushbuffer_lock);
 	mutex_lock(&nvavp->open_lock);
 	if (nvavp_check_idle(nvavp) && nvavp->pending) {
 		nvavp->pending = false;
 		nvavp_clks_disable(nvavp);
 	}
 	mutex_unlock(&nvavp->open_lock);
-	mutex_unlock(&nvavp->pushbuffer_lock);
+	mutex_unlock(&channel_info->pushbuffer_lock);
 }
 
 static int nvavp_service(struct nvavp_info *nvavp)
@@ -446,9 +445,14 @@ static int nvavp_pushbuffer_alloc(struct nvavp_info *nvavp, int channel_id)
 {
 	int ret = 0;
 
-	nvavp->pushbuf_handle = nvmap_alloc(nvavp->nvmap, NVAVP_PUSHBUFFER_SIZE,
-				SZ_1M, NVMAP_HANDLE_UNCACHEABLE, 0);
-	if (IS_ERR(nvavp->pushbuf_handle)) {
+	struct nvavp_channel *channel_info = nvavp_get_channel_info(
+							nvavp, channel_id);
+
+	channel_info->pushbuf_handle = nvmap_alloc(nvavp->nvmap,
+						NVAVP_PUSHBUFFER_SIZE,
+						SZ_1M, NVMAP_HANDLE_UNCACHEABLE,
+						0);
+	if (IS_ERR(channel_info->pushbuf_handle)) {
 		dev_err(&nvavp->nvhost_dev->dev,
 			"cannot create pushbuffer handle\n");
 		ret = PTR_ERR(channel_info->pushbuf_handle);
@@ -516,8 +520,9 @@ static int nvavp_pushbuffer_init(struct nvavp_info *nvavp)
 		nvavp_set_channel_control_area(nvavp, channel_id);
 		if (IS_VIDEO_CHANNEL_ID(channel_id)) {
 			nvavp->syncpt_id = NVSYNCPT_AVP_0;
-			nvavp->syncpt_value = nvhost_syncpt_read_ext(
-				nvavp->nvhost_dev, nvavp->syncpt_id);
+			nvavp->syncpt_value = nvhost_syncpt_read(
+							nvavp->nvhost_syncpt,
+							nvavp->syncpt_id);
 		}
 
 	}
@@ -544,7 +549,7 @@ static int nvavp_pushbuffer_update(struct nvavp_info *nvavp, u32 phys_addr,
 	control = channel_info->os_control;
 	pr_debug("nvavp_pushbuffer_update for channel_id (%d):\
 		control->put (0x%x) control->get (0x%x)\n",
-		channel_id, (u32) &control->put, (u32) &control->get);
+		channel_id, &control->put, &control->get);
 
 	mutex_lock(&channel_info->pushbuffer_lock);
 
@@ -601,12 +606,14 @@ static int nvavp_pushbuffer_update(struct nvavp_info *nvavp, u32 phys_addr,
 	}
 
 	/* enable clocks to VDE/BSEV */
-	mutex_lock(&nvavp->open_lock);
-	if (!nvavp->pending) {
-		nvavp_clks_enable(nvavp);
-		nvavp->pending = true;
+	if (IS_VIDEO_CHANNEL_ID(channel_id)) {
+		mutex_lock(&nvavp->open_lock);
+		if (!nvavp->pending) {
+			nvavp_clks_enable(nvavp);
+			nvavp->pending = true;
+		}
+		mutex_unlock(&nvavp->open_lock);
 	}
-	mutex_unlock(&nvavp->open_lock);
 
 	/* update put pointer */
 	channel_info->pushbuf_index = (channel_info->pushbuf_index + wordcount)&
@@ -1253,7 +1260,7 @@ static int nvavp_force_clock_stay_on_ioctl(struct file *filp, unsigned int cmd,
 	return 0;
 }
 
-static int tegra_nvavp_open(struct inode *inode, struct file *filp)
+static int tegra_nvavp_open(struct inode *inode, struct file *filp, int channel_id)
 {
 	struct miscdevice *miscdev = filp->private_data;
 	struct nvavp_info *nvavp = dev_get_drvdata(miscdev->parent);
@@ -1382,6 +1389,15 @@ static const struct file_operations tegra_video_nvavp_fops = {
 	.release	= tegra_nvavp_release,
 	.unlocked_ioctl	= tegra_nvavp_ioctl,
 };
+
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
+static const struct file_operations tegra_audio_nvavp_fops = {
+	.owner          = THIS_MODULE,
+	.open           = tegra_nvavp_audio_open,
+	.release        = tegra_nvavp_release,
+	.unlocked_ioctl = tegra_nvavp_ioctl,
+};
+#endif
 
 static int tegra_nvavp_probe(struct nvhost_device *ndev,
 	struct nvhost_device_id *id_table)
