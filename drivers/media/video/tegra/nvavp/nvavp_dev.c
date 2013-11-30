@@ -42,6 +42,10 @@
 #include <mach/legacy_irq.h>
 #include <linux/nvmap.h>
 
+#include "../../../../video/tegra/host/host1x/host1x_syncpt.h"
+#include "../../../../video/tegra/host/dev.h"
+#include "../../../../video/tegra/host/nvhost_acm.h"
+
 #if defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU)
 #include "../avp/headavp.h"
 #endif
@@ -133,6 +137,7 @@ struct nvavp_info {
 	u8				*pushbuf_data;
 	u32				pushbuf_index;
 	u32				pushbuf_fence;
+	bool				pending;
 
 	bool				pending;
 
@@ -143,7 +148,7 @@ struct nvavp_info {
 
 	struct nvhost_device		*nvhost_dev;
 	struct miscdevice		misc_dev;
-	atomic_t				clock_stay_on_refcount;
+	atomic_t			clock_stay_on_refcount;
 };
 
 struct nvavp_clientctx {
@@ -284,14 +289,12 @@ static void clock_disable_handler(struct work_struct *work)
 	channel_info = nvavp_get_channel_info(nvavp, NVAVP_VIDEO_CHANNEL);
 
 	mutex_lock(&nvavp->pushbuffer_lock);
-
 	mutex_lock(&nvavp->open_lock);
 	if (nvavp_check_idle(nvavp) && nvavp->pending) {
 		nvavp->pending = false;
 		nvavp_clks_disable(nvavp);
 	}
 	mutex_unlock(&nvavp->open_lock);
-
 	mutex_unlock(&nvavp->pushbuffer_lock);
 }
 
@@ -443,14 +446,9 @@ static int nvavp_pushbuffer_alloc(struct nvavp_info *nvavp, int channel_id)
 {
 	int ret = 0;
 
-	struct nvavp_channel *channel_info = nvavp_get_channel_info(
-							nvavp, channel_id);
-
-	channel_info->pushbuf_handle = nvmap_alloc(nvavp->nvmap,
-						NVAVP_PUSHBUFFER_SIZE,
-						SZ_1M, NVMAP_HANDLE_UNCACHEABLE,
-						0);
-	if (IS_ERR(channel_info->pushbuf_handle)) {
+	nvavp->pushbuf_handle = nvmap_alloc(nvavp->nvmap, NVAVP_PUSHBUFFER_SIZE,
+				SZ_1M, NVMAP_HANDLE_UNCACHEABLE, 0);
+	if (IS_ERR(nvavp->pushbuf_handle)) {
 		dev_err(&nvavp->nvhost_dev->dev,
 			"cannot create pushbuffer handle\n");
 		ret = PTR_ERR(channel_info->pushbuf_handle);
@@ -1229,14 +1227,14 @@ static int nvavp_force_clock_stay_on_ioctl(struct file *filp, unsigned int cmd,
 	struct nvavp_clock_stay_on_state_args clock;
 
 	if (copy_from_user(&clock, (void __user *)arg,
-			sizeof(struct nvavp_clock_stay_on_state_args)))
+			   sizeof(struct nvavp_clock_stay_on_state_args)))
 		return -EFAULT;
 
 	dev_dbg(&nvavp->nvhost_dev->dev, "%s: state=%d\n",
 		__func__, clock.state);
 
 	if (clock.state != NVAVP_CLOCK_STAY_ON_DISABLED &&
-		clock.state !=  NVAVP_CLOCK_STAY_ON_ENABLED) {
+	    clock.state !=  NVAVP_CLOCK_STAY_ON_ENABLED) {
 		dev_err(&nvavp->nvhost_dev->dev, "%s: invalid argument=%d\n",
 			__func__, clock.state);
 		return -EINVAL;
@@ -1384,15 +1382,6 @@ static const struct file_operations tegra_video_nvavp_fops = {
 	.release	= tegra_nvavp_release,
 	.unlocked_ioctl	= tegra_nvavp_ioctl,
 };
-
-#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
-static const struct file_operations tegra_audio_nvavp_fops = {
-	.owner          = THIS_MODULE,
-	.open           = tegra_nvavp_audio_open,
-	.release        = tegra_nvavp_release,
-	.unlocked_ioctl = tegra_nvavp_ioctl,
-};
-#endif
 
 static int tegra_nvavp_probe(struct nvhost_device *ndev,
 	struct nvhost_device_id *id_table)

@@ -1222,6 +1222,7 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 {
 	struct tegra_udc *udc = container_of(gadget, struct tegra_udc, gadget);
 	unsigned long flags;
+
 	DBG("%s(%d) turn VBUS state from %s to %s", __func__, __LINE__,
 		udc->vbus_active ? "on" : "off", is_active ? "on" : "off");
 
@@ -2635,13 +2636,11 @@ err_del_udc:
 
 err_unregister:
 	device_unregister(&udc->gadget.dev);
-
 err_phy:
 	tegra_usb_phy_close(udc->phy);
 
 err_irq:
 	free_irq(udc->irq, udc);
-
 err_iounmap:
 	iounmap(udc->regs);
 
@@ -2680,7 +2679,6 @@ static int __exit tegra_udc_remove(struct platform_device *pdev)
 
 	if (udc->transceiver)
 		otg_set_peripheral(udc->transceiver, NULL);
-
 
 	/* Free allocated memory */
 	dma_free_coherent(&pdev->dev, STATUS_BUFFER_SIZE,

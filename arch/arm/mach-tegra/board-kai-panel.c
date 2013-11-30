@@ -695,7 +695,7 @@ int __init kai_panel_init(void)
 #endif
 
 #ifdef CONFIG_TEGRA_GRHOST
-	err = tegra3_register_host1x_devices();
+	err = nvhost_device_register(&tegra_grhost_device);
 	if (err)
 		return err;
 #endif

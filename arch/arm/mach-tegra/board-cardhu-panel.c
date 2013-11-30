@@ -43,13 +43,10 @@
 #include "gpio-names.h"
 #include "tegra3_host1x_devices.h"
 
-#define DC_CTRL_MODE	(TEGRA_DC_OUT_ONE_SHOT_MODE | \
-			 TEGRA_DC_OUT_ONE_SHOT_LP_MODE)
-
 /* Select panel to be used. */
 #define DSI_PANEL_219 1
 #define DSI_PANEL_218 0
->>>>>>> d2f71d2... ARM: tegra: cardhu: Fixed DSI panel issue on PM269.
+>>>>>>> a168c03bd97fd9761218779623db0cec09fa8f4a
 #define AVDD_LCD PMU_TCA6416_GPIO_PORT17
 #define DSI_PANEL_RESET 1
 
@@ -145,7 +142,9 @@ static p_tegra_dc_bl_output bl_output = cardhu_bl_output_measured;
 
 static int cardhu_backlight_init(struct device *dev)
 {
-	int ret = 0;
+	int ret;
+
+	bl_output = cardhu_bl_output_measured;
 
 	if (WARN_ON(ARRAY_SIZE(cardhu_bl_output_measured) != 256))
 		pr_err("bl_output array does not have 256 elements\n");
@@ -202,6 +201,19 @@ static void cardhu_backlight_exit(struct device *dev)
 		/* Disable back light for DSIb panel */
 		gpio_set_value(cardhu_dsib_bl_enb, 0);
 		gpio_free(cardhu_dsib_bl_enb);
+
+#if DSI_PANEL_218
+	/* Enable back light for DSIa panel */
+	ret = gpio_request(cardhu_dsia_bl_enb, "dsia_bl_enable");
+	if (ret < 0)
+		return ret;
+
+	ret = gpio_direction_output(cardhu_dsia_bl_enb, 1);
+	if (ret < 0)
+		gpio_free(cardhu_dsia_bl_enb);
+	else
+		tegra_gpio_enable(cardhu_dsia_bl_enb);
+#endif
 
 #if DSI_PANEL_219
 	/* Enable back light for DSIa panel */
@@ -721,9 +733,6 @@ static struct tegra_fb_data cardhu_hdmi_fb_data = {
 	.win		= 0,
 	.xres		= 640,
 	.yres		= 480,
-#ifdef CONFIG_TEGRA_DC_USE_HW_BPP
-	.bits_per_pixel = -1,
-#else
 	.bits_per_pixel	= 32,
 #endif
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
@@ -769,7 +778,6 @@ static int cardhu_dsi_panel_enable(void)
 			return PTR_ERR(cardhu_dsi_reg);
 		}
 	}
-
 
 	ret = gpio_request(AVDD_LCD, "avdd_lcd");
 	if (ret < 0)
@@ -1001,10 +1009,6 @@ struct tegra_dsi_out cardhu_dsi = {
 #endif
 	.panel_reset = DSI_PANEL_RESET,
 	.power_saving_suspend = true,
-
-	.n_early_suspend_cmd = ARRAY_SIZE(dsi_early_suspend_cmd),
-	.dsi_early_suspend_cmd = dsi_early_suspend_cmd,
-
 	.n_late_resume_cmd = ARRAY_SIZE(dsi_late_resume_cmd),
 	.dsi_late_resume_cmd = dsi_late_resume_cmd,
 
@@ -1387,6 +1391,11 @@ int __init cardhu_panel_init(void)
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb2_start;
 	res->end = tegra_fb2_start + tegra_fb2_size - 1;
+
+	/* Copy the bootloader fb to the fb2. */
+	tegra_move_framebuffer(tegra_fb2_start, tegra_bootloader_fb_start,
+				min(tegra_fb2_size, tegra_bootloader_fb_size));
+
 	if (!err)
 		err = nvhost_device_register(&cardhu_disp2_device);
 #endif

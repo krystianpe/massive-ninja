@@ -55,6 +55,7 @@ static void tegra_dc_set_latency_allowance(struct tegra_dc *dc,
 	BUG_ON(dc->ndev->id >= ARRAY_SIZE(la_id_tab));
 	BUG_ON(dc->ndev->id >= ARRAY_SIZE(vfilter_tab));
 	BUG_ON(w->idx >= ARRAY_SIZE(*la_id_tab));
+
 	bw = max(w->bandwidth, w->new_bandwidth);
 
 	/* tegra_dc_get_bandwidth() treats V filter windows as double

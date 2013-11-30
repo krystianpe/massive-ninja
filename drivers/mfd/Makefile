@@ -124,3 +124,4 @@ cpcap-objs			:= cpcap-core.o \
 				   cpcap-3mm5.o 
 
 obj-$(CONFIG_MFD_CPCAP)		+= cpcap.o
+

@@ -860,7 +860,6 @@ const struct tdms_config tdms_config[] = {
 		DRIVE_CURRENT_LANE2(DRIVE_CURRENT_5_250_mA) |
 		DRIVE_CURRENT_LANE3(DRIVE_CURRENT_5_250_mA),
 	},
-
 };
 #else /*  CONFIG_ARCH_TEGRA_2x_SOC */
 const struct tdms_config tdms_config[] = {

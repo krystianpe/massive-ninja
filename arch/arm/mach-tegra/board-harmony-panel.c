@@ -357,7 +357,7 @@ int __init harmony_panel_init(void)
 #endif
 
 #ifdef CONFIG_TEGRA_GRHOST
-	err = tegra2_register_host1x_devices();
+	err = nvhost_device_register(&tegra_grhost_device);
 	if (err)
 		return err;
 #endif

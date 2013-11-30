@@ -574,3 +574,4 @@ static struct platform_driver tegra_ehci_driver = {
 #endif
 	}
 };
+

@@ -241,8 +241,8 @@ static struct tegra_fb_data ventana_fb_data = {
 
 static struct tegra_fb_data ventana_hdmi_fb_data = {
 	.win		= 0,
-	.xres		= 1366,
-	.yres		= 768,
+	.xres		= 640,
+	.yres		= 480,
 	.bits_per_pixel	= 32,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
@@ -416,7 +416,7 @@ int __init ventana_panel_init(void)
 #endif
 
 #ifdef CONFIG_TEGRA_GRHOST
-	err = tegra2_register_host1x_devices();
+	err = nvhost_device_register(&tegra_grhost_device);
 	if (err)
 		return err;
 #endif
@@ -439,6 +439,11 @@ int __init ventana_panel_init(void)
 	/* Copy the bootloader fb to the fb. */
 	tegra_move_framebuffer(tegra_fb_start, tegra_bootloader_fb_start,
 		min(tegra_fb_size, tegra_bootloader_fb_size));
+
+	/* Copy the bootloader fb to the fb2. */
+	tegra_move_framebuffer(tegra_fb2_start, tegra_bootloader_fb_start,
+		min(tegra_fb2_size, tegra_bootloader_fb_size));
+
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
 	if (!err)

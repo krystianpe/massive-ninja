@@ -83,6 +83,42 @@ static struct tegra_thermal_data thermal_data = {
 #endif
 };
 
+/* !!!TODO: Change for kai (Taken from Ventana) */
+static struct tegra_utmip_config utmi_phy_config[] = {
+	[0] = {
+			.hssync_start_delay = 0,
+			.idle_wait_delay = 17,
+			.elastic_limit = 16,
+			.term_range_adj = 6,
+			.xcvr_setup = 15,
+			.xcvr_setup_offset = 0,
+			.xcvr_use_fuses = 1,
+			.xcvr_lsfslew = 2,
+			.xcvr_lsrslew = 2,
+	},
+	[1] = {
+			.hssync_start_delay = 0,
+			.idle_wait_delay = 17,
+			.elastic_limit = 16,
+			.term_range_adj = 6,
+			.xcvr_setup = 15,
+			.xcvr_setup_offset = 0,
+			.xcvr_use_fuses = 1,
+			.xcvr_lsfslew = 2,
+			.xcvr_lsrslew = 2,
+	},
+	[2] = {
+			.hssync_start_delay = 0,
+			.idle_wait_delay = 17,
+			.elastic_limit = 16,
+			.term_range_adj = 6,
+			.xcvr_setup = 8,
+			.xcvr_setup_offset = 0,
+			.xcvr_use_fuses = 1,
+			.xcvr_lsfslew = 2,
+			.xcvr_lsrslew = 2,
+	},
+};
 
 /* wl128x BT, FM, GPS connectivity chip */
 struct ti_st_plat_data kai_wilink_pdata = {

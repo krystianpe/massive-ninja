@@ -977,13 +977,13 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 	/* Abort dmas if any error */
 	if (tspi->cur_direction & DATA_DIR_TX) {
 		if (tspi->tx_status) {
-			tegra_dma_dequeue(tspi->tx_dma);
+			tegra_dma_dequeue_req(tspi->tx_dma, &tspi->tx_dma_req);
 			err += 1;
 		} else {
 			wait_status = wait_for_completion_interruptible_timeout(
 				&tspi->tx_dma_complete, SLINK_DMA_TIMEOUT);
 			if (wait_status <= 0) {
-				tegra_dma_dequeue(tspi->tx_dma);
+				tegra_dma_dequeue_req(tspi->tx_dma, &tspi->tx_dma_req);
 				dev_err(&tspi->pdev->dev, "Error in Dma Tx "
 							"transfer\n");
 				err += 1;
@@ -993,13 +993,13 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 
 	if (tspi->cur_direction & DATA_DIR_RX) {
 		if (tspi->rx_status) {
-			tegra_dma_dequeue(tspi->rx_dma);
+			tegra_dma_dequeue_req(tspi->rx_dma, &tspi->rx_dma_req);
 			err += 2;
 		} else {
 			wait_status = wait_for_completion_interruptible_timeout(
 				&tspi->rx_dma_complete, SLINK_DMA_TIMEOUT);
 			if (wait_status <= 0) {
-				tegra_dma_dequeue(tspi->rx_dma);
+				tegra_dma_dequeue_req(tspi->rx_dma, &tspi->rx_dma_req);
 				dev_err(&tspi->pdev->dev, "Error in Dma Rx "
 							"transfer\n");
 				err += 2;
@@ -1127,7 +1127,7 @@ static int __init spi_tegra_probe(struct platform_device *pdev)
 
 	sprintf(tspi->port_name, "tegra_spi_%d", pdev->id);
 	ret = request_threaded_irq(tspi->irq, spi_tegra_isr,
-			spi_tegra_isr_thread, IRQF_ONESHOT,
+			spi_tegra_isr_thread, IRQF_DISABLED,
 			tspi->port_name, tspi);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Failed to register ISR for IRQ %d\n",
@@ -1443,3 +1443,4 @@ static void __exit spi_tegra_exit(void)
 module_exit(spi_tegra_exit);
 
 MODULE_LICENSE("GPL");
+

@@ -100,13 +100,36 @@ static void tegra_otg_disable_clk(void)
 
 static const char *tegra_state_name(enum usb_otg_state state)
 {
-	if (state == OTG_STATE_A_HOST)
-		return "HOST";
-	if (state == OTG_STATE_B_PERIPHERAL)
-		return "PERIPHERAL";
-	if (state == OTG_STATE_A_SUSPEND)
-		return "SUSPEND";
-	return "INVALID";
+	switch (state) {
+		case OTG_STATE_A_HOST:
+			return "HOST";
+		case OTG_STATE_B_PERIPHERAL:
+			return "PERIPHERAL";
+		case OTG_STATE_A_SUSPEND:
+			return "SUSPEND";
+		case OTG_STATE_UNDEFINED:
+			return "UNDEFINED";
+		default:
+			return "INVALID";
+	}
+}
+
+static unsigned long enable_interrupt(struct tegra_otg_data *tegra, bool en)
+{
+	unsigned long val;
+
+	clk_enable(tegra->clk);
+	val = otg_readl(tegra, USB_PHY_WAKEUP);
+	if (en)
+		val |= USB_INT_EN;
+	else
+		val &= ~USB_INT_EN;
+	otg_writel(tegra, val, USB_PHY_WAKEUP);
+	/* Add delay to make sure register is updated */
+	udelay(1);
+	clk_disable(tegra->clk);
+
+	return val;
 }
 
 static unsigned long enable_interrupt(struct tegra_otg_data *tegra, bool en)
