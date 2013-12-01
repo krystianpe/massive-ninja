@@ -104,3 +104,5 @@ int p1852_pins_state_init(void);
 
 #endif
 
+#endif
+

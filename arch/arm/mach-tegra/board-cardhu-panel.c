@@ -68,11 +68,11 @@
 #define e1506_bl_enb		TEGRA_GPIO_PH2
 
 /* E1506 display board pins */
-#define e1506_pm269_lcd_te		TEGRA_GPIO_PJ1
-#define e1506_pm269_dsi_vddio		TEGRA_GPIO_PH1
-#define e1506_pm269_dsia_bl_pwm		TEGRA_GPIO_PH0
-#define e1506_pm269_panel_enb		TEGRA_GPIO_PW1
-#define e1506_pm269_bl_enb		TEGRA_GPIO_PH2
+#define e1506_lcd_te		TEGRA_GPIO_PJ1
+#define e1506_dsi_vddio		TEGRA_GPIO_PH1
+#define e1506_dsia_bl_pwm	TEGRA_GPIO_PH0
+#define e1506_panel_enb		TEGRA_GPIO_PW1
+#define e1506_bl_enb		TEGRA_GPIO_PH2
 
 /* E1506 display board pins */
 #define e1506_lcd_te		TEGRA_GPIO_PJ1
@@ -1021,9 +1021,6 @@ struct tegra_dsi_out cardhu_dsi = {
 	.n_early_suspend_cmd = ARRAY_SIZE(dsi_early_suspend_cmd),
 	.dsi_early_suspend_cmd = dsi_early_suspend_cmd,
 
-	.n_early_suspend_cmd = ARRAY_SIZE(dsi_early_suspend_cmd),
-	.dsi_early_suspend_cmd = dsi_early_suspend_cmd,
-
 	.n_late_resume_cmd = ARRAY_SIZE(dsi_late_resume_cmd),
 	.dsi_late_resume_cmd = dsi_late_resume_cmd,
 
@@ -1417,7 +1414,7 @@ skip_lvds:
 #endif
 
 #ifdef CONFIG_TEGRA_GRHOST
-	err = nvhost_device_register(&tegra_grhost_device);
+	err = tegra3_register_host1x_devices();
 	if (err)
 		return err;
 #endif
